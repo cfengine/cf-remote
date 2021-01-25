@@ -9,14 +9,14 @@ It's a _normal_ python package, but doesn't have a setup script (yet).
 Clone `cfengine/core` repo where you want, and then symlink, like this:
 
 ```
-$ git clone https://github.com/cfengine/core.git
-$ ln -s `pwd`/core/contrib/cf-remote/cf_remote/__main__.py /usr/local/bin/cf-remote
+$ git clone https://github.com/cfengine/cf-remote.git
+$ ln -s `pwd`/cf-remote/cf_remote/__main__.py /usr/local/bin/cf-remote
 ```
 
 Install dependencies:
 
 ```
-$ cd core/contrib/cf-remote/
+$ cd cf-remote/
 $ pip3 install -r requirements.txt
 ```
 
@@ -24,7 +24,7 @@ Check that it worked:
 
 ```
 $ ls -al `which cf-remote`
-lrwxr-xr-x  1 olehermanse  admin  68 Jan 10 15:20 /usr/local/bin/cf-remote -> /northern.tech/cfengine/core/contrib/cf-remote/cf_remote/__main__.py
+lrwxr-xr-x  1 olehermanse  admin  68 Jan 10 15:20 /usr/local/bin/cf-remote -> /northern.tech/cfengine/cf-remote/cf_remote/__main__.py
 $ cf-remote --version
 cf-remote version 0.1 (BETA)
 Available CFEngine versions:

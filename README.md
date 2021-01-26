@@ -6,7 +6,7 @@ cf-remote requires python 3 with fabric and requests.
 (Install using brew/apt/yum/pip).
 It's a _normal_ python package, but doesn't have a setup script (yet).
 
-Clone `cfengine/core` repo where you want, and then symlink, like this:
+Clone `cfengine/cf-remote` repo where you want, and then symlink, like this:
 
 ```
 $ git clone https://github.com/cfengine/cf-remote.git

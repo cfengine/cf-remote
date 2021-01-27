@@ -1,12 +1,25 @@
 import setuptools
-from cf_remote import version
+import subprocess
+
+cf_remote_version = subprocess.run(['git', 'describe', '--tags'], stdout=subprocess.PIPE).stdout.decode("utf-8").strip()
+assert "." in cf_remote_version
+
+with open("cf_remote/version.py", "r", encoding="utf-8") as fh:
+    version_module = fh.read()
+
+assert "UNKOWN_VERSION" in version_module
+
+version_module = version_module.replace("UNKOWN_VERSION", cf_remote_version)
+
+with open("cf_remote/version.py", "w", encoding="utf-8") as fh:
+    fh.write(version_module)
 
 with open("README.md", "r", encoding="utf-8") as fh:
     long_description = fh.read()
 
 setuptools.setup(
     name="cf-remote",
-    version=f"{version.string()}",
+    version=cf_remote_version,
     author="Northern.tech, Inc.",
     author_email="contact@northern.tech",
     description="Tooling to deploy CFEngine (and much more)",

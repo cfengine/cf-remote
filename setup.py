@@ -24,4 +24,11 @@ setuptools.setup(
             "cf-remote = cf_remote.main:main"
         ]
     },
+    install_requires=[
+      "cryptography >= 3.3.1",
+      "fabric >= 2.6.0",
+      "paramiko >= 2.7.2",
+      "requests >= 2.25.1",
+      "apache-libcloud >= 3.3.0"
+    ],
 )

@@ -11,7 +11,7 @@ from cf_remote.spawn import Providers
 
 
 def print_version_info():
-    print("cf-remote version 0.1.1")
+    print("cf-remote version 0.1.2")
     print("Available CFEngine versions:")
     releases = Releases()
     print(releases)

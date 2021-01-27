@@ -1,3 +1,4 @@
 build
 dist
 /cf_remote/VERSION
+/cf_remote/__pycache__/

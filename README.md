@@ -1,38 +1,16 @@
 # cf-remote
 
+## Requirements
+
+cf-remote requires python 3.6 or greater.
+
 ## Installation
 
-cf-remote requires python 3 with fabric and requests.
-(Install using brew/apt/yum/pip).
-It's a _normal_ python package, but doesn't have a setup script (yet).
-
-Clone `cfengine/cf-remote` repo where you want, and then symlink, like this:
+Install with pip3:
 
 ```
-$ git clone https://github.com/cfengine/cf-remote.git
-$ sudo ln -s `pwd`/cf-remote/cf_remote/__main__.py /usr/local/bin/cf-remote
+$ pip3 install cf-remote
 ```
-
-Install dependencies:
-
-```
-$ cd cf-remote/
-$ pip3 install -r requirements.txt
-```
-
-Check that it worked:
-
-```
-$ ls -al `which cf-remote`
-lrwxr-xr-x  1 olehermanse  admin  68 Jan 10 15:20 /usr/local/bin/cf-remote -> /northern.tech/cfengine/cf-remote/cf_remote/__main__.py
-$ cf-remote --version
-cf-remote version 0.1 (BETA)
-Available CFEngine versions:
-3.13.0, 3.12.1, 3.12.0, 3.10.5, 3.10.4, 3.10.3, 3.10.2, 3.10.1, 3.10.0
-```
-
-Note that the version/branch of core you have checked out is important!
-You can also move it out of your core folder if you prefer this (but then making changes to cf-remote becomes more tedious).
 
 ## Examples
 
@@ -97,4 +75,3 @@ $ export CF_REMOTE_SSH_KEY="~/.ssh/id_rsa.pub"
 
 Feel free to open pull requests to expand this documentation, add features or fix problems.
 You can also pick up an existing task or file an issue in [our bug tracker](https://tracker.mender.io/issues/?filter=11711).
-`cf-remote` is a part of the [cfengine community repo](https://github.com/cfengine/core) and has the same license (GPLv3).

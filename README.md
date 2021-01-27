@@ -10,7 +10,7 @@ Clone `cfengine/cf-remote` repo where you want, and then symlink, like this:
 
 ```
 $ git clone https://github.com/cfengine/cf-remote.git
-$ ln -s `pwd`/cf-remote/cf_remote/__main__.py /usr/local/bin/cf-remote
+$ sudo ln -s `pwd`/cf-remote/cf_remote/__main__.py /usr/local/bin/cf-remote
 ```
 
 Install dependencies:

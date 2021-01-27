@@ -3,6 +3,7 @@ import os
 import sys
 
 from cf_remote import log
+from cf_remote import version
 from cf_remote import commands, paths
 from cf_remote.utils import user_error, exit_success, expand_list_from_file, is_file_string
 from cf_remote.utils import strip_user, read_json, is_package_url
@@ -11,7 +12,7 @@ from cf_remote.spawn import Providers
 
 
 def print_version_info():
-    print("cf-remote version 0.1.4")
+    print(f"cf-remote version {version.string()}")
     print("Available CFEngine versions:")
     releases = Releases()
     print(releases)

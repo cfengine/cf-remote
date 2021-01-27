@@ -1,11 +1,12 @@
 import setuptools
+from cf_remote import version
 
 with open("README.md", "r", encoding="utf-8") as fh:
     long_description = fh.read()
 
 setuptools.setup(
     name="cf-remote",
-    version="0.1.4",
+    version=f"{version.string()}",
     author="Northern.tech, Inc.",
     author_email="contact@northern.tech",
     description="Tooling to deploy CFEngine (and much more)",

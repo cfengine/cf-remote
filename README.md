@@ -1,8 +1,13 @@
 # cf-remote
 
+`cf-remote` is a tool to deploy CFEngine.
+It works by contacting remote hosts with SSH and using `ssh` / `scp` to copy files and run commands.
+Commands for provisioning hosts in the cloud (AWS or GCP) are also available.
+
 ## Requirements
 
 cf-remote requires python 3.6 or greater.
+SSH must already be configured and running on the remote host.
 
 ## Installation
 

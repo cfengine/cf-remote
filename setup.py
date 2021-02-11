@@ -36,10 +36,10 @@ setuptools.setup(
         ]
     },
     install_requires=[
-      "cryptography >= 3.3.1",
+      "cryptography >= 3.4.4",
       "fabric >= 2.6.0",
       "paramiko >= 2.7.2",
       "requests >= 2.25.1",
-      "apache-libcloud >= 3.3.0"
+      "apache-libcloud >= 3.3.1"
     ],
 )

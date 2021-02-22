@@ -513,14 +513,22 @@ def deploy(hubs, masterfiles):
     if not directory.endswith("/masterfiles"):
         log.error("The masterfiles directory to deploy must be called 'masterfiles'")
         return 1
-    if not os.path.isfile(directory + "/autogen.sh"):
-        log.error(f"'{directory}' must be a source checkout and contain the autogen.sh script")
-        return 1
 
-    os.system(f"bash -c 'cd {directory} && ./autogen.sh 1>/dev/null 2>&1'")
-    if not os.path.isfile(directory + "/promises.cf"):
-        log.error(f"The autogen.sh script did not produce promises.cf in '{directory}'")
-        return 1
+    if os.path.isfile(f"{directory}/autogen.sh"):
+        os.system(f"bash -c 'cd {directory} && ./autogen.sh 1>/dev/null 2>&1'")
+        if not os.path.isfile(f"{directory}/promises.cf"):
+            log.error(f"The autogen.sh script did not produce promises.cf in '{directory}'")
+            return 1
+    elif os.path.isfile(f"{directory}/configure"):
+        os.system(f"bash -c 'cd {directory} && ./configure 1>/dev/null 2>&1'")
+        if not os.path.isfile(f"{directory}/promises.cf"):
+            log.error(f"The configure script did not produce promises.cf in '{directory}'")
+            return 1
+    else:
+        log.debug("No autogen.sh / configure found, assuming ready to install directory")
+        if not os.path.isfile(f"{directory}/promises.cf"):
+            log.error(f"No promises.cf in '{directory}'")
+            return 1
 
     assert(not cf_remote_dir().endswith("/"))
     tarball = cf_remote_dir() + "/masterfiles.tgz"

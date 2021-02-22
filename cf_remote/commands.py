@@ -475,17 +475,35 @@ def uninstall(hosts):
         errors += uninstall_host(host)
     return errors
 
-def deploy(hubs, directory):
-    directory = os.path.abspath(os.path.expanduser(directory))
-    log.debug(f"Deploy directory expanded to: {directory}")
-    if directory.endswith("/"):
-        directory = directory[0:-1]
+def deploy_tarball(hubs, tarball):
+    assert os.path.isfile(tarball)
+
+    if not tarball.endswith("/masterfiles.tgz"):
+        log.error("The masterfiles tarball to deploy must be called 'masterfiles.tgz'")
+        return 1
+
+    errors = 0
+    for hub in hubs:
+        errors += deploy_masterfiles(hub, tarball)
+    return errors
+
+def deploy(hubs, masterfiles):
+    masterfiles = os.path.abspath(os.path.expanduser(masterfiles))
+    log.debug(f"Deploy path expanded to: {masterfiles}")
+    if masterfiles.endswith("/"):
+        masterfiles = masterfiles[0:-1]
+
+    if os.path.isfile(masterfiles):
+        return deploy_tarball(hubs, masterfiles)
+
+    if not os.path.isdir(masterfiles):
+        log.error(f"'{masterfiles}' must be a directory")
+        return 1
+
+    directory = masterfiles
 
     if not directory.endswith("/masterfiles"):
         log.error("The masterfiles directory to deploy must be called 'masterfiles'")
-        return 1
-    if not os.path.isdir(directory):
-        log.error(f"'{directory}' must be a directory")
         return 1
     if not os.path.isfile(directory + "/autogen.sh"):
         log.error(f"'{directory}' must be a source checkout and contain the autogen.sh script")
@@ -501,7 +519,4 @@ def deploy(hubs, directory):
     above = directory[0:-len("/masterfiles")]
     os.system(f"rm -rf {tarball}")
     os.system(f"tar -czf {tarball} -C {above} masterfiles")
-    errors = 0
-    for hub in hubs:
-        errors += deploy_masterfiles(hub, tarball)
-    return errors
+    return deploy_tarball(hubs, tarball)

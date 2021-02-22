@@ -381,6 +381,7 @@ def uninstall_host(host, *, connection=None):
 @auto_connect
 def deploy_masterfiles(host, tarball, *, connection=None):
     data = get_info(host, connection=connection)
+    print("\nDeploying to:")
     print_info(data)
     if not data["agent_version"]:
         log.error(f"Cannot deploy masterfiles on {host} - CFEngine not installed")

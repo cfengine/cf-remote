@@ -476,10 +476,25 @@ def uninstall(hosts):
     return errors
 
 def deploy(hubs, directory):
-    assert(directory.endswith("/masterfiles"))
-    assert(os.path.isfile(directory + "/autogen.sh"))
+    directory = os.path.abspath(os.path.expanduser(directory))
+    log.debug(f"Deploy directory expanded to: {directory}")
+    if directory.endswith("/"):
+        directory = directory[0:-1]
+
+    if not directory.endswith("/masterfiles"):
+        log.error("The masterfiles directory to deploy must be called 'masterfiles'")
+        return 1
+    if not os.path.isdir(directory):
+        log.error(f"'{directory}' must be a directory")
+        return 1
+    if not os.path.isfile(directory + "/autogen.sh"):
+        log.error(f"'{directory}' must be a source checkout and contain the autogen.sh script")
+        return 1
+
     os.system(f"bash -c 'cd {directory} && ./autogen.sh 1>/dev/null 2>&1'")
-    assert(os.path.isfile(directory + "/promises.cf"))
+    if not os.path.isfile(directory + "/promises.cf"):
+        log.error(f"The autogen.sh script did not produce promises.cf in '{directory}'")
+        return 1
 
     assert(not cf_remote_dir().endswith("/"))
     tarball = cf_remote_dir() + "/masterfiles.tgz"

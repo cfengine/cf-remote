@@ -252,7 +252,10 @@ def validate_command(command, args):
             user_error("Must specify a path to masterfiles")
         if not args.hub:
             user_error("Must specify at least one hub")
-        if not os.path.exists(args.masterfiles):
+        if args.masterfiles.startswith(("http://", "https://")):
+            if not args.masterfiles.endswith((".tgz", ".tar.gz")):
+                user_error("masterfiles URL must be to a gzipped tarball (.tgz or .tar.gz)")
+        elif not os.path.exists(args.masterfiles):
             user_error(f"'{args.masterfiles}' does not exist")
 
 

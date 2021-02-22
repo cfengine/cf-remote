@@ -478,8 +478,8 @@ def uninstall(hosts):
 def deploy_tarball(hubs, tarball):
     assert os.path.isfile(tarball)
 
-    if not tarball.endswith("/masterfiles.tgz"):
-        log.error("The masterfiles tarball to deploy must be called 'masterfiles.tgz'")
+    if not tarball.endswith((".tgz", ".tar.gz")):
+        log.error("The masterfiles directory must be in a gzipped tarball (.tgz or .tar.gz)")
         return 1
 
     errors = 0
@@ -488,8 +488,16 @@ def deploy_tarball(hubs, tarball):
     return errors
 
 def deploy(hubs, masterfiles):
-    masterfiles = os.path.abspath(os.path.expanduser(masterfiles))
-    log.debug(f"Deploy path expanded to: {masterfiles}")
+    if masterfiles.startswith(("http://", "https://")):
+        urls = [masterfiles]
+        paths = _download_urls(urls)
+        assert len(paths) == 1
+        masterfiles = paths[0]
+        log.debug(f"Deploying downloaded: {masterfiles}")
+    else:
+        masterfiles = os.path.abspath(os.path.expanduser(masterfiles))
+        log.debug(f"Deploy path expanded to: {masterfiles}")
+
     if masterfiles.endswith("/"):
         masterfiles = masterfiles[0:-1]
 

@@ -387,7 +387,7 @@ def deploy_masterfiles(host, tarball, *, connection=None):
         log.error(f"Cannot deploy masterfiles on {host} - CFEngine not installed")
         return 1
     
-    scp(tarball, host, connection=connection)
+    scp(tarball, host, connection=connection, rename="masterfiles.tgz")
     ssh_cmd(connection, f"tar -xzf masterfiles.tgz")
     commands = [
         "systemctl stop cfengine3",

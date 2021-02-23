@@ -109,9 +109,9 @@ def get_args():
     dp.add_argument("--all", help="Destroy all hosts spawned in the clouds", action='store_true')
     dp.add_argument("name", help="Name fo the group of hosts to destroy", nargs='?')
 
-    sp = subp.add_parser("deploy", help="Deploy masterfiles directory to hub")
+    sp = subp.add_parser("deploy", help="Deploy masterfiles to hub")
     sp.add_argument("--hub", help="Hub(s) to deploy to", type=str, required=True)
-    sp.add_argument("directory", help="Path to local masterfiles directory", type=str)
+    sp.add_argument("masterfiles", help="Path to local masterfiles directory or tarball", type=str)
 
     args = ap.parse_args()
     return args
@@ -186,7 +186,7 @@ def run_command_with_args(command, args):
         group_name = args.name if args.name else None
         return commands.destroy(group_name)
     elif command == "deploy":
-        return commands.deploy(args.hub, args.directory)
+        return commands.deploy(args.hub, args.masterfiles)
     else:
         user_error("Unknown command: '{}'".format(command))
 
@@ -248,12 +248,15 @@ def validate_command(command, args):
             user_error("One of --all or NAME required for destroy")
 
     if command == "deploy":
-        if not args.directory:
-            user_error("Must specify a masterfiles directory")
+        if not args.masterfiles:
+            user_error("Must specify a path to masterfiles")
         if not args.hub:
             user_error("Must specify at least one hub")
-        if not os.path.isdir(args.directory):
-            user_error(f"'{args.directory}' is not a directory")
+        if args.masterfiles.startswith(("http://", "https://")):
+            if not args.masterfiles.endswith((".tgz", ".tar.gz")):
+                user_error("masterfiles URL must be to a gzipped tarball (.tgz or .tar.gz)")
+        elif not os.path.exists(args.masterfiles):
+            user_error(f"'{args.masterfiles}' does not exist")
 
 
 def is_in_cloud_state(name):

@@ -57,13 +57,17 @@ def auto_connect(func):
     return connect_wrapper
 
 
-def scp(file, remote, connection=None):
+def scp(file, remote, connection=None, rename=None):
     if not connection:
         with connect(remote) as connection:
-            scp(file, remote, connection)
+            scp(file, remote, connection, rename)
     else:
         print("Copying: '{}' to '{}'".format(file, remote))
         connection.put(file)
+        if rename:
+            file = os.path.basename(file)
+            print(f"Renaming '{file}' -> '{rename}' on '{remote}'")
+            ssh_cmd(connection, f"mv {file} {rename}")
     return 0
 
 

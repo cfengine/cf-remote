@@ -475,18 +475,64 @@ def uninstall(hosts):
         errors += uninstall_host(host)
     return errors
 
-def deploy(hubs, directory):
-    assert(directory.endswith("/masterfiles"))
-    assert(os.path.isfile(directory + "/autogen.sh"))
-    os.system(f"bash -c 'cd {directory} && ./autogen.sh 1>/dev/null 2>&1'")
-    assert(os.path.isfile(directory + "/promises.cf"))
+def deploy_tarball(hubs, tarball):
+    assert os.path.isfile(tarball)
+
+    if not tarball.endswith((".tgz", ".tar.gz")):
+        log.error("The masterfiles directory must be in a gzipped tarball (.tgz or .tar.gz)")
+        return 1
+
+    errors = 0
+    for hub in hubs:
+        errors += deploy_masterfiles(hub, tarball)
+    return errors
+
+def deploy(hubs, masterfiles):
+    if masterfiles.startswith(("http://", "https://")):
+        urls = [masterfiles]
+        paths = _download_urls(urls)
+        assert len(paths) == 1
+        masterfiles = paths[0]
+        log.debug(f"Deploying downloaded: {masterfiles}")
+    else:
+        masterfiles = os.path.abspath(os.path.expanduser(masterfiles))
+        log.debug(f"Deploy path expanded to: {masterfiles}")
+
+    if masterfiles.endswith("/"):
+        masterfiles = masterfiles[0:-1]
+
+    if os.path.isfile(masterfiles):
+        return deploy_tarball(hubs, masterfiles)
+
+    if not os.path.isdir(masterfiles):
+        log.error(f"'{masterfiles}' must be a directory")
+        return 1
+
+    directory = masterfiles
+
+    if not directory.endswith("/masterfiles"):
+        log.error("The masterfiles directory to deploy must be called 'masterfiles'")
+        return 1
+
+    if os.path.isfile(f"{directory}/autogen.sh"):
+        os.system(f"bash -c 'cd {directory} && ./autogen.sh 1>/dev/null 2>&1'")
+        if not os.path.isfile(f"{directory}/promises.cf"):
+            log.error(f"The autogen.sh script did not produce promises.cf in '{directory}'")
+            return 1
+    elif os.path.isfile(f"{directory}/configure"):
+        os.system(f"bash -c 'cd {directory} && ./configure 1>/dev/null 2>&1'")
+        if not os.path.isfile(f"{directory}/promises.cf"):
+            log.error(f"The configure script did not produce promises.cf in '{directory}'")
+            return 1
+    else:
+        log.debug("No autogen.sh / configure found, assuming ready to install directory")
+        if not os.path.isfile(f"{directory}/promises.cf"):
+            log.error(f"No promises.cf in '{directory}'")
+            return 1
 
     assert(not cf_remote_dir().endswith("/"))
     tarball = cf_remote_dir() + "/masterfiles.tgz"
     above = directory[0:-len("/masterfiles")]
     os.system(f"rm -rf {tarball}")
     os.system(f"tar -czf {tarball} -C {above} masterfiles")
-    errors = 0
-    for hub in hubs:
-        errors += deploy_masterfiles(hub, tarball)
-    return errors
+    return deploy_tarball(hubs, tarball)

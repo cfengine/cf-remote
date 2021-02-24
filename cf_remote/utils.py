@@ -76,7 +76,7 @@ def above_package_path():
 
 
 def is_package_url(string):
-    return bool(re.match("https?://.+/.+\.(rpm|deb|msi|tar\.gz|tgz)", string))
+    return bool(re.match(r"https?://.+/.+\.(rpm|deb|msi|tar\.gz|tgz)", string))
 
 
 def get_package_name(url):

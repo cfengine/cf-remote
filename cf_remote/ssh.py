@@ -9,8 +9,8 @@ from cf_remote.utils import whoami
 
 
 def connect(host, users=None):
-    log.debug("Connecting to '{}'".format(host))
-    log.debug("users= '{}'".format(users))
+    log.debug(f"Connecting to '{host}'")
+    log.debug(f"users= '{users}'")
     if "@" in host:
         parts = host.split("@")
         assert len(parts) == 2
@@ -25,7 +25,7 @@ def connect(host, users=None):
             users = [whoami()] + users
     for user in users:
         try:
-            log.debug("Attempting ssh: {}@{}".format(user, host))
+            log.debug(f"Attempting ssh: {user}@{host}")
             connect_kwargs = {}
             key = os.getenv("CF_REMOTE_SSH_KEY")
             if key:
@@ -38,7 +38,7 @@ def connect(host, users=None):
             return c
         except AuthenticationException:
             continue
-    sys.exit("Could not ssh into '{}'".format(host))
+    sys.exit(f"Could not ssh into '{host}'")
 
 
 # Decorator to make a function automatically connect
@@ -62,7 +62,7 @@ def scp(file, remote, connection=None, rename=None):
         with connect(remote) as connection:
             scp(file, remote, connection, rename)
     else:
-        print("Copying: '{}' to '{}'".format(file, remote))
+        print(f"Copying: '{file}' to '{remote}'")
         connection.put(file)
         if rename:
             file = os.path.basename(file)
@@ -74,13 +74,13 @@ def scp(file, remote, connection=None, rename=None):
 def ssh_cmd(connection, cmd, errors=False):
     assert connection
     try:
-        log.debug("Running over SSH: '{}'".format(cmd))
+        log.debug(f"Running over SSH: '{cmd}'")
         result = connection.run(cmd, hide=True)
         output = result.stdout.replace("\r\n", "\n").strip("\n")
-        log.debug("'{}' -> '{}'".format(cmd, output))
+        log.debug(f"'{cmd}' -> '{output}'")
         return output
     except UnexpectedExit as e:
-        msg = "Non-sudo command unexpectedly exited: '{}'".format(cmd)
+        msg = f"Non-sudo command unexpectedly exited: '{cmd}'"
         if errors:
             print(e)
             log.error(msg)
@@ -93,14 +93,15 @@ def ssh_cmd(connection, cmd, errors=False):
 def ssh_sudo(connection, cmd, errors=False):
     assert connection
     try:
-        log.debug("Running(sudo) over SSH: '{}'".format(cmd))
-        sudo_cmd = 'sudo bash -c "{}"'.format(cmd.replace('"', r'\"'))
+        log.debug(f"Running(sudo) over SSH: '{cmd}'")
+        escaped = cmd.replace('"', r'\"')
+        sudo_cmd = f'sudo bash -c "{escaped}"'
         result = connection.run(sudo_cmd, hide=True, pty=True)
         output = result.stdout.strip("\n")
-        log.debug("'{}' -> '{}'".format(cmd, output))
+        log.debug(f"'{cmd}' -> '{output}'")
         return output
     except UnexpectedExit as e:
-        msg = "Sudo command unexpectedly exited: '{}'".format(cmd)
+        msg = f"Sudo command unexpectedly exited: '{cmd}'"
         if errors:
             print(e)
             log.error(msg)

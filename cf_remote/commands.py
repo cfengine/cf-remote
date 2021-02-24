@@ -498,8 +498,7 @@ def deploy(hubs, masterfiles):
         masterfiles = os.path.abspath(os.path.expanduser(masterfiles))
         log.debug(f"Deploy path expanded to: {masterfiles}")
 
-    if masterfiles.endswith("/"):
-        masterfiles = masterfiles[0:-1]
+    masterfiles = masterfiles.rstrip("/")
 
     if os.path.isfile(masterfiles):
         return deploy_tarball(hubs, masterfiles)

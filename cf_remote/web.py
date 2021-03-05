@@ -1,4 +1,5 @@
 import os
+import fcntl
 import urllib.request
 import requests
 from cf_remote.utils import write_json, mkdir
@@ -26,10 +27,20 @@ def download_package(url, path=None):
         directory = cf_remote_packages_dir()
         mkdir(directory)
         path = os.path.join(directory, filename)
-    if os.path.exists(path):
-        print("Package already downloaded: '{}'".format(path))
-        return path
-    print("Downloading package: '{}'".format(path))
-    with open(path, "wb") as f:
-        f.write(urllib.request.urlopen(url).read())
+
+    # Use "ab" to prevent truncation of the file in case it is already being
+    # downloaded by a different thread.
+    with open(path, "ab") as f:
+        # Get an exclusive lock. If the file size is != 0 then it's already
+        # downloaded, otherwise we download.
+        fcntl.flock(f.fileno(), fcntl.LOCK_EX)
+        st = os.stat(path)
+        if st.st_size != 0:
+            log.debug("Package '{}' already downloaded".format(path))
+        else:
+            print("Downloading package: '{}'".format(path))
+            f.write(urllib.request.urlopen(url).read())
+            f.flush()
+        fcntl.flock(f.fileno(), fcntl.LOCK_UN)
+
     return path

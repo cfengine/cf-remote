@@ -66,16 +66,6 @@ def pretty(data):
     return json.dumps(data, indent=2)
 
 
-def package_path():
-    above_dir = os.path.dirname(__file__)
-    return os.path.abspath(above_dir)
-
-
-def above_package_path():
-    path = package_path() + "/../"
-    return os.path.abspath(path)
-
-
 def is_package_url(string):
     return bool(re.match(r"https?://.+/.+\.(rpm|deb|msi|tar\.gz|tgz)", string))
 

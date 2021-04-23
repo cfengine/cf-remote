@@ -81,7 +81,7 @@ def is_package_url(string):
 
 
 def get_package_name(url):
-    assert(is_package_url(url))
+    assert is_package_url(url)
     return url.rsplit("/", 1)[-1]
 
 
@@ -187,6 +187,7 @@ def strip_user(host):
 def whoami():
     return getpass.getuser()
 
+
 def print_progress_dot(*args):
     print(".", end="")
-    sys.stdout.flush()      # STDOUT is line-buffered
+    sys.stdout.flush()  # STDOUT is line-buffered

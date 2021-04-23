@@ -38,17 +38,16 @@ def def_json(call_collect=False):
             "mpf_augments_control_enabled": ["any"],
             "services_autorun": ["any"],
             "cfengine_internal_purge_policies": ["any"],
-            "cfengine_mp_fr_dependencies_auto_install" : ["any"]
+            "cfengine_mp_fr_dependencies_auto_install": ["any"],
         },
         "vars": {
-            "acl": ["0.0.0.0/0",
-                    "::/0"],
+            "acl": ["0.0.0.0/0", "::/0"],
             "default_data_select_host_monitoring_include": [".*"],
             "default_data_select_policy_hub_monitoring_include": [".*"],
             "control_executor_splaytime": "1",
             "control_executor_schedule": ["any"],
-            "control_hub_hub_schedule": ["any"]
-        }
+            "control_hub_hub_schedule": ["any"],
+        },
     }
 
     if call_collect:

@@ -56,7 +56,8 @@ def read_file(path):
 
 
 def save_file(path, data):
-    mkdir("/".join(path.split("/")[0:-1]))
+    if "/" in path:
+        mkdir("/".join(path.split("/")[0:-1]))
     with open(path, "w") as f:
         f.write(data)
 

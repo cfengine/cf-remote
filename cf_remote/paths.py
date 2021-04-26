@@ -21,6 +21,7 @@ def cf_remote_file(fname=None):
 def cf_remote_packages_dir(subdir=None):
     return path_append(cf_remote_dir("packages"), subdir)
 
+
 CLOUD_CONFIG_FNAME = "cloud_config.json"
 CLOUD_CONFIG_FPATH = cf_remote_file(CLOUD_CONFIG_FNAME)
 CLOUD_STATE_FNAME = "cloud_state.json"

@@ -56,7 +56,8 @@ def read_file(path):
 
 
 def save_file(path, data):
-    mkdir("/".join(path.split("/")[0:-1]))
+    if "/" in path:
+        mkdir("/".join(path.split("/")[0:-1]))
     with open(path, "w") as f:
         f.write(data)
 
@@ -65,22 +66,12 @@ def pretty(data):
     return json.dumps(data, indent=2)
 
 
-def package_path():
-    above_dir = os.path.dirname(__file__)
-    return os.path.abspath(above_dir)
-
-
-def above_package_path():
-    path = package_path() + "/../"
-    return os.path.abspath(path)
-
-
 def is_package_url(string):
     return bool(re.match(r"https?://.+/.+\.(rpm|deb|msi|tar\.gz|tgz)", string))
 
 
 def get_package_name(url):
-    assert(is_package_url(url))
+    assert is_package_url(url)
     return url.rsplit("/", 1)[-1]
 
 
@@ -186,6 +177,7 @@ def strip_user(host):
 def whoami():
     return getpass.getuser()
 
+
 def print_progress_dot(*args):
     print(".", end="")
-    sys.stdout.flush()      # STDOUT is line-buffered
+    sys.stdout.flush()  # STDOUT is line-buffered

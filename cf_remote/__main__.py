@@ -8,4 +8,5 @@ if __name__ == "__main__":
     sys.path.insert(0, abspath)
 
     from cf_remote.main import main
+
     main()

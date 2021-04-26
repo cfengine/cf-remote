@@ -41,7 +41,7 @@ Binaries      : dpkg, apt
 The `install` command can automatically download and install packages as well as bootstrap both hubs and clients.
 
 ```
-cf-remote install --hub 34.247.181.100 --bootstrap 172.31.44.146 --demo
+$ cf-remote install --hub 34.247.181.100 --bootstrap 172.31.44.146 --demo
 
 ubuntu@34.247.181.100
 OS            : ubuntu (debian)

@@ -18,7 +18,15 @@ def connect(host, users=None):
         if not users:
             users = [parts[0]]
     if not users:
-        users = ["Administrator", "admin", "ubuntu", "ec2-user", "centos", "vagrant", "root"]
+        users = [
+            "Administrator",
+            "admin",
+            "ubuntu",
+            "ec2-user",
+            "centos",
+            "vagrant",
+            "root",
+        ]
         # Similar to ssh, try own username first,
         # some systems will lock us out if we have too many failed attempts.
         if whoami() not in users:
@@ -30,8 +38,7 @@ def connect(host, users=None):
             key = os.getenv("CF_REMOTE_SSH_KEY")
             if key:
                 connect_kwargs["key_filename"] = os.path.expanduser(key)
-            c = fabric.Connection(
-                host=host, user=user, connect_kwargs=connect_kwargs)
+            c = fabric.Connection(host=host, user=user, connect_kwargs=connect_kwargs)
             c.ssh_user = user
             c.ssh_host = host
             c.run("whoami", hide=True)
@@ -94,7 +101,7 @@ def ssh_sudo(connection, cmd, errors=False):
     assert connection
     try:
         log.debug(f"Running(sudo) over SSH: '{cmd}'")
-        escaped = cmd.replace('"', r'\"')
+        escaped = cmd.replace('"', r"\"")
         sudo_cmd = f'sudo bash -c "{escaped}"'
         result = connection.run(sudo_cmd, hide=True, pty=True)
         output = result.stdout.strip("\n")

@@ -167,6 +167,36 @@ If you have more than one key in `~/.ssh` you may need to specify which key `cf-
 $ export CF_REMOTE_SSH_KEY="~/.ssh/id_rsa.pub"
 ```
 
+### Working on the local host
+
+`cf-remote` can work on the local host when the target host is `localhost`. In this case, it executes commands locally without connecting over SSH.
+
+```
+$ cf-remote info -H localhost
+
+ubuntu@localhost
+OS            : ubuntu (debian)
+Architecture  : x86_64
+CFEngine      : 3.12.1
+Policy server : 172.31.42.192
+Binaries      : dpkg, apt
+```
+
+When performing actions locally, `cf-remote` may require your password to run commands with `sudo`:
+
+```
+$ cf-remote install --clients localhost
+ubuntu@localhost
+OS            : debian
+Architecture  : x86_64
+CFEngine      : Not installed
+Policy server :
+Binaries      : dpkg, apt
+Installing: '/home/ubuntu/.cfengine/cf-remote/packages/cfengine-nova_3.15.3-1.debian10_amd64.deb' on 'localhost'
+[sudo] password for ubuntu:
+CFEngine 3.15.3 (Enterprise) was successfully installed on 'localhost'
+```
+
 ## Contribute
 
 Feel free to open pull requests to expand this documentation, add features or fix problems.

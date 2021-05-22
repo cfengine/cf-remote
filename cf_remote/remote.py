@@ -309,10 +309,10 @@ def install_host(
         r = ssh_cmd(cmd="curl --fail -O {}".format(package), connection=connection, errors=True)
         if r is None:
             return 1
-    else:
+    elif not connection.is_local:
         scp(package, host, connection=connection)
+        package = basename(package)
 
-    package = basename(package)
     install_package(host, package, data, connection=connection)
     data = get_info(host, connection=connection)
     if data["agent_version"] and len(data["agent_version"]) > 0:
@@ -387,8 +387,10 @@ def deploy_masterfiles(host, tarball, *, connection=None):
         log.error(f"Cannot deploy masterfiles on {host} - CFEngine not installed")
         return 1
     
-    scp(tarball, host, connection=connection, rename="masterfiles.tgz")
-    ssh_cmd(connection, f"tar -xzf masterfiles.tgz")
+    if not connection.is_local:
+        scp(tarball, host, connection=connection, rename="masterfiles.tgz")
+        tarball = "masterfiles.tgz"
+    ssh_cmd(connection, f"tar -xzf {tarball}")
     commands = [
         "systemctl stop cfengine3",
         "rm -rf /var/cfengine/masterfiles",

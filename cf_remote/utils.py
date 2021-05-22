@@ -28,7 +28,7 @@ def canonify(string):
 
 
 def user_error(msg):
-    sys.exit("cf-remote: " + msg)
+    sys.exit(f"{os.path.basename(sys.argv[0])}: " + msg)
 
 
 def exit_success():

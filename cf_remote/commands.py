@@ -66,6 +66,7 @@ def scp(hosts, files, users=None):
             errors += transfer_file(host, file, users)
     return errors
 
+
 def _download_urls(urls):
     """Download packages from URLs, replace URLs with filenames
 

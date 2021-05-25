@@ -1,11 +1,33 @@
 import os
 import sys
 import fabric
+import pwd
+import shutil
+import subprocess
+
 from paramiko.ssh_exception import AuthenticationException
 from invoke.exceptions import UnexpectedExit
 
 from cf_remote import log
 from cf_remote.utils import whoami
+
+
+class LocalConnection:
+    is_local = True
+    ssh_user = None
+    ssh_host = "localhost"
+
+    def __init__(self):
+        self.ssh_user = pwd.getpwuid(os.getuid()).pw_name
+
+    def run(self, command, hide=False, pty=False):
+        return subprocess.run(command, capture_output=True, shell=True, text=True)
+
+    def put(self, src):
+        src = os.path.abspath(src)
+        dst = os.path.basename(src)
+        if src != dst:
+            shutil.copy(src, dst)
 
 
 def connect(host, users=None):
@@ -55,6 +77,9 @@ def connect(host, users=None):
 def auto_connect(func):
     def connect_wrapper(host, *args, **kwargs):
         if not kwargs.get("connection"):
+            if host == "localhost":
+                kwargs["connection"] = LocalConnection()
+                return func(host, *args, **kwargs)
             with connect(host, users=kwargs.get("users")) as connection:
                 assert connection
                 kwargs["connection"] = connection

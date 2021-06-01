@@ -309,7 +309,7 @@ def install_host(
         r = ssh_cmd(cmd="curl --fail -O {}".format(package), connection=connection, errors=True)
         if r is None:
             return 1
-    elif not connection.is_local:
+    elif not getattr(connection, 'is_local', False):
         scp(package, host, connection=connection)
         package = basename(package)
 
@@ -387,7 +387,7 @@ def deploy_masterfiles(host, tarball, *, connection=None):
         log.error(f"Cannot deploy masterfiles on {host} - CFEngine not installed")
         return 1
     
-    if not connection.is_local:
+    if not getattr(connection, 'is_local', False):
         scp(tarball, host, connection=connection, rename="masterfiles.tgz")
         tarball = "masterfiles.tgz"
     ssh_cmd(connection, f"tar -xzf {tarball}")

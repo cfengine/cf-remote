@@ -285,7 +285,7 @@ def spawn(platform, count, role, group_name, provider=Providers.AWS, region=None
     key_pair = None
     if provider == Providers.AWS:
         try:
-            creds = AWSCredentials(creds_data["aws"]["key"], creds_data["aws"]["secret"])
+            creds = AWSCredentials(creds_data["aws"]["key"], creds_data["aws"]["secret"], creds_data["aws"]["token"])
             sec_groups = creds_data["aws"]["security_groups"]
             key_pair = creds_data["aws"]["key_pair"]
         except KeyError:
@@ -356,7 +356,7 @@ def destroy(group_name=None):
 
     aws_creds = None
     try:
-        aws_creds = AWSCredentials(creds_data["aws"]["key"], creds_data["aws"]["secret"])
+        aws_creds = AWSCredentials(creds_data["aws"]["key"], creds_data["aws"]["secret"], creds_data["aws"]["token"])
     except KeyError:
         # missing/incomplete AWS credentials, may not be needed, though
         pass

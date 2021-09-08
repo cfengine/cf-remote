@@ -150,19 +150,19 @@ aws_platforms = {
         'size':'m1.small'
     },
     'windows-2012-x64':{
-        'ami':'ami-042fc05480fa9e135',
+        'ami':'ami-02864a00dabe78e13',
         'user':'Administrator',
         'size':'m1.small',
         'xlsize':'m3.xlarge',
     },
     'windows-2016-x64':{
-        'ami':'ami-0f80e4d47a281dc90',
+        'ami':'ami-0a433ab3d2b154c91',
         'user':'Administrator',
         'size':'m1.small',
         'xlsize':'m3.xlarge',
     },
     'windows-2019-x64':{
-        'ami':'ami-07bd93e5f09193501',
+        'ami':'ami-02fdc923f49b96dbc',
         'user':'Administrator',
         'size':'t2.small',
         'xlsize':'t2.xlarge',

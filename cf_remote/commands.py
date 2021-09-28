@@ -261,12 +261,21 @@ def list_command(tags=None, version=None, edition=None):
 def download(tags=None, version=None, edition=None):
     return _iterate_over_packages(tags, version, edition, True)
 
+def _get_aws_creds_from_env():
+    if ("AWS_ACCESS_KEY_ID" in os.environ and
+        "AWS_SECRET_ACCESS_KEY" in os.environ):
+        return AWSCredentials(os.environ["AWS_ACCESS_KEY_ID"],
+                              os.environ["AWS_SECRET_ACCESS_KEY"],
+                              os.environ.get("AWS_SESSION_TOKEN", ""))
+    return None
+
 def spawn(platform, count, role, group_name, provider=Providers.AWS, region=None,
           size=None, network=None, public_ip=True, extend_group=False):
+
     if os.path.exists(CLOUD_CONFIG_FPATH):
         creds_data = read_json(CLOUD_CONFIG_FPATH)
     else:
-        print("Cloud credentials not found at %s" % CLOUD_CONFIG_FPATH)
+        print("Cloud configuration not found at %s" % CLOUD_CONFIG_FPATH)
         return 1
 
     if os.path.exists(CLOUD_STATE_FPATH):
@@ -285,7 +294,9 @@ def spawn(platform, count, role, group_name, provider=Providers.AWS, region=None
     key_pair = None
     if provider == Providers.AWS:
         try:
-            creds = AWSCredentials(creds_data["aws"]["key"], creds_data["aws"]["secret"])
+            creds = _get_aws_creds_from_env() or AWSCredentials(creds_data["aws"]["key"],
+                                                                creds_data["aws"]["secret"],
+                                                                creds_data["aws"].get("token", ""))
             sec_groups = creds_data["aws"]["security_groups"]
             key_pair = creds_data["aws"]["key_pair"]
         except KeyError:
@@ -354,12 +365,15 @@ def destroy(group_name=None):
         print("Cloud credentials not found at %s" % CLOUD_CONFIG_FPATH)
         return 1
 
-    aws_creds = None
-    try:
-        aws_creds = AWSCredentials(creds_data["aws"]["key"], creds_data["aws"]["secret"])
-    except KeyError:
-        # missing/incomplete AWS credentials, may not be needed, though
-        pass
+    aws_creds = _get_aws_creds_from_env()
+    if not aws_creds:
+        try:
+            aws_creds = AWSCredentials(creds_data["aws"]["key"],
+                                       creds_data["aws"]["secret"],
+                                       creds_data["aws"].get("token", ""))
+        except KeyError:
+            # missing/incomplete AWS credentials, may not be needed, though
+            pass
 
     gcp_creds = None
     try:

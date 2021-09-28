@@ -15,7 +15,7 @@ from cf_remote import log
 
 _NAME_RANDOM_PART_LENGTH = 4
 
-AWSCredentials = namedtuple("AWSCredentials", ["key", "secret"])
+AWSCredentials = namedtuple("AWSCredentials", ["key", "secret", "token"])
 GCPCredentials = namedtuple("GCPCredentials", ["project_ID", "SA_ID", "key_path"])
 
 VMRequest = namedtuple("VMRequest", ["platform", "name", "size", "public_ip"])
@@ -232,7 +232,10 @@ def get_cloud_driver(provider, creds, region):
 
     if provider == Providers.AWS:
         EC2 = get_driver(Provider.EC2)
-        driver = EC2(creds.key, creds.secret, region=region)
+        kwargs = dict()
+        if creds.token:
+            kwargs["token"] = creds.token
+        driver = EC2(creds.key, creds.secret, region=region, **kwargs)
 
         # somehow driver.region is always None unless we set it explicitly
         driver.region = region

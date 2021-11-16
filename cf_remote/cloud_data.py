@@ -156,13 +156,13 @@ aws_platforms = {
         'xlsize':'m3.xlarge',
     },
     'windows-2016-x64':{
-        'ami':'ami-0a433ab3d2b154c91',
+        'ami':'ami-08f68fefe026532ea',
         'user':'Administrator',
         'size':'m1.small',
         'xlsize':'m3.xlarge',
     },
     'windows-2019-x64':{
-        'ami':'ami-02fdc923f49b96dbc',
+        'ami':'ami-08f68fefe026532ea',
         'user':'Administrator',
         'size':'t2.small',
         'xlsize':'t2.xlarge',

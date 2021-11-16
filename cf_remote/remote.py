@@ -309,6 +309,7 @@ def install_host(
         r = ssh_cmd(cmd="curl --fail -O {}".format(package), connection=connection, errors=True)
         if r is None:
             return 1
+        package = basename(package)
     elif not getattr(connection, 'is_local', False):
         scp(package, host, connection=connection)
         package = basename(package)

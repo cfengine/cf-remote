@@ -77,6 +77,47 @@ def run_command(host, command, *, users=None, connection=None, sudo=False):
     return ssh_cmd(connection, command, errors=True)
 
 
+def get_package_tags(os_release=None, redhat_release=None):
+    tags = []
+    if os_release is not None:
+        distro = os_release["ID"]
+        major = os_release["VERSION_ID"].split(".")[0]
+        platform_tag = distro + major
+
+        # Add tags with version number first, to filter by them first:
+        tags.append(platform_tag) # Example: ubuntu16
+        if distro == "centos" or distro == "rhel":
+            tags.append("el" + major)
+
+        # Then add more generic tags (lower priority):
+        tags.append(distro) # Example: ubuntu
+        if distro == "centos":
+            tags.append("rhel")
+
+        if distro == "centos" or distro == "rhel":
+            tags.append("el")
+    elif redhat_release is not None:
+        # Examples:
+        # CentOS release 6.10 (Final)
+        # Red Hat Enterprise Linux release 8.0 (Ootpa)
+        before, after = redhat_release.split(" release ")
+        distro = "rhel"
+        if before.lower().startswith("centos"):
+            distro = "centos"
+        major = after.split(".")[0]
+        tags.append(distro + major)
+        tags.append("el" + major)
+        if "rhel" not in tags:
+            tags.append("rhel" + major)
+
+        tags.append(distro)
+        if "rhel" not in tags:
+            tags.append("rhel")
+        tags.append("el")
+
+    return tags
+
+
 @auto_connect
 def get_info(host, *, users=None, connection=None):
     log.debug("Getting info about '{}'".format(host))
@@ -103,46 +144,12 @@ def get_info(host, *, users=None, connection=None):
         data["arch"] = ssh_cmd(connection, "uname -m")
         data["os_release"] = os_release(ssh_cmd(connection, "cat /etc/os-release"))
 
-        tags = []
-        if data["os_release"]:
-            distro = data["os_release"]["ID"]
-            major = data["os_release"]["VERSION_ID"].split(".")[0]
-            platform_tag = distro + major
+        os_release_data = data.get("os_release")
+        redhat_release_data = None
+        if not os_release_data:
+            redhat_release_data = ssh_cmd(connection, "cat /etc/redhat-release")
 
-            # Add tags with version number first, to filter by them first:
-            tags.append(platform_tag) # Example: ubuntu16
-            if distro == "centos" or distro == "rhel":
-                tags.append("el" + major)
-
-            # Then add more generic tags (lower priority):
-            tags.append(distro) # Example: ubuntu
-            if distro == "centos":
-                tags.append("rhel")
-
-            if distro == "centos" or distro == "rhel":
-                tags.append("el")
-        else:
-            redhat_release = ssh_cmd(connection, "cat /etc/redhat-release")
-            if redhat_release:
-                # Examples:
-                # CentOS release 6.10 (Final)
-                # Red Hat Enterprise Linux release 8.0 (Ootpa)
-                before, after = redhat_release.split(" release ")
-                distro = "rhel"
-                if before.lower().startswith("centos"):
-                    distro = "centos"
-                major = after.split(".")[0]
-                tags.append(distro + major)
-                tags.append("el" + major)
-                if "rhel" not in tags:
-                    tags.append("rhel" + major)
-
-                tags.append(distro)
-                if "rhel" not in tags:
-                    tags.append("rhel")
-                tags.append("el")
-
-        data["package_tags"] = tags
+        data["package_tags"] = get_package_tags(os_release_data, redhat_release_data)
 
         data["agent_location"] = ssh_cmd(connection, "which cf-agent")
         data["policy_server"] = ssh_cmd(connection, "cat /var/cfengine/policy_server.dat")
@@ -250,6 +257,36 @@ def _package_from_releases(tags, extension, version, edition, remote_download):
     else:
         return download_package(artifact.url)
 
+
+def get_package_from_host_info(package_tags, pkg_binary, arch, version=None,
+                               hub=False, edition="enterprise", packages=None,
+                               remote_download=False):
+    tags = []
+    if edition == "enterprise":
+        tags.append("hub" if hub else "agent")
+
+    tags.append("64" if arch in ("x86_64", "amd64") else arch)
+    if arch in ("i386", "i486", "i586", "i686"):
+        tags.append("32")
+
+    extension = None
+    if package_tags is not None and "msi" in package_tags:
+        extension = ".msi"
+    elif "dpkg" in pkg_binary:
+        extension = ".deb"
+    elif "rpm" in pkg_binary:
+        extension = ".rpm"
+
+    if package_tags is not None:
+        tags.extend(tag for tag in package_tags if tag != "msi")
+
+    if packages is None: # No commandd line argument given
+        package = _package_from_releases(tags, extension, version, edition, remote_download)
+    else:
+        package = _package_from_list(tags, extension, packages)
+
+    return package
+
 @auto_connect
 def install_host(
         host,
@@ -277,28 +314,9 @@ def install_host(
         package = packages[0]
 
     if not package:
-        tags = []
-        if edition == "enterprise":
-            tags.append("hub" if hub else "agent")
-        tags.append("64" if data["arch"] in ["x86_64", "amd64"] else data["arch"])
-        if data["arch"] in ["i386", "i486", "i586", "i686"]:
-            tags.append("32")
-        extension = None
-        if "package_tags" in data and "msi" in data["package_tags"]:
-            extension = ".msi"
-            data["package_tags"].remove("msi")
-        elif "dpkg" in data["bin"]:
-            extension = ".deb"
-        elif "rpm" in data["bin"]:
-            extension = ".rpm"
-
-        if "package_tags" in data and data["package_tags"]:
-            tags.extend(data["package_tags"])
-
-        if packages is None: # No commandd line argument given
-            package = _package_from_releases(tags, extension, version, edition, remote_download)
-        else:
-            package = _package_from_list(tags, extension, packages)
+        package = get_package_from_host_info(data.get("package_tags"), data.get("bin"),
+                                             data.get("arch"), version, hub, edition, packages,
+                                             remote_download)
 
     if not package:
         log.error("Installation failed - no package found!")

@@ -3,6 +3,7 @@ from cf_remote.web import get_json
 from cf_remote.utils import is_in_past, canonify
 from cf_remote import log
 import re
+import sys
 
 
 class Artifact:
@@ -58,7 +59,11 @@ class Artifact:
         self.add_tags_from_filename(self.filename)
 
     def add_tag(self, string):
-        assert type(string) is str
+        if sys.version_info[0] == 2:
+            assert type(string) in (str, unicode)
+        else:
+            assert type(string) is str
+
         canonified = canonify(string)
         if canonified not in self.tags:
             self.tags.append(canonified)

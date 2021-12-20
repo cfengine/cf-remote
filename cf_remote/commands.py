@@ -484,6 +484,52 @@ def init_cloud_config():
     print("Config file %s created, please complete the configuration in it." % CLOUD_CONFIG_FPATH)
     return 0
 
+def ansible_inventory():
+    if not os.path.exists(CLOUD_STATE_FPATH):
+        print("No saved cloud state info")
+        return 1
+
+    vms_info = read_json(CLOUD_STATE_FPATH)
+    all_lines = []
+    hub_lines = []
+    client_lines = []
+    for group_name in vms_info:
+        print("[%s]" % group_name.strip("@"))
+        for vm in (name for name in vms_info[group_name] if name != "meta"):
+            host_line = ('%s ansible_host=%s ansible_user=%s ansible_ssh_extra_args="-o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no"' %
+                         (vm, vms_info[group_name][vm]["public_ips"][0], vms_info[group_name][vm]["user"]))
+            print(host_line)
+            all_lines.append(host_line)
+            if vms_info[group_name][vm]["role"] == "hub":
+                hub_lines.append(host_line)
+            if vms_info[group_name][vm]["role"] == "client":
+                client_lines.append(host_line)
+        print()
+
+    if len(all_lines) > 0:
+        print("[all]")
+        for line in all_lines:
+            print(line)
+        print()
+
+    if len(hub_lines) > 1:
+        print("[hubs]")
+        for line in hub_lines:
+            print(line)
+        print()
+    elif len(hub_lines) == 1:
+        print("[hub]")
+        print(hub_lines[0])
+        print()
+
+    if len(client_lines) > 0:
+        print("[clients]")
+        for line in client_lines:
+            print(line)
+        print()
+
+    return 0
+
 def uninstall(hosts):
     errors = 0
     for host in hosts:

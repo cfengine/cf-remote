@@ -88,6 +88,7 @@ def get_args():
 
     sp = subp.add_parser("spawn", help="Spawn hosts in the clouds")
     sp.add_argument("--list-platforms", help="List supported platforms", action='store_true')
+    sp.add_argument("--ansible-inventory", help="Print Ansible inventory with spawned hosts", action='store_true')
     sp.add_argument("--init-config", help="Initialize configuration file for spawn functionality",
                     action='store_true')
     sp.add_argument("--platform", help="Platform to use", type=str)
@@ -158,6 +159,8 @@ def run_command_with_args(command, args):
     elif command == "spawn":
         if args.list_platforms:
             return commands.list_platforms()
+        if args.ansible_inventory:
+            return commands.ansible_inventory()
         if args.init_config:
             return commands.init_cloud_config()
         if args.name and "," in args.name:
@@ -231,8 +234,9 @@ def validate_command(command, args):
             user_error("cf-remote sude/run requires exactly 1 command (use quotes)")
         args.remote_command = args.remote_command[0]
 
-    if command == "spawn" and not args.list_platforms and not args.init_config:
-        # --list-platforms doesn't require any other options/arguments (TODO:
+    if (command == "spawn" and not args.list_platforms and not args.init_config
+        and not args.ansible_inventory):
+        # The above options don't require any other options/arguments (TODO:
         # --provider), but otherwise all have to be given
         if not args.platform:
             user_error("--platform needs to be specified")

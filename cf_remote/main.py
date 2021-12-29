@@ -91,6 +91,7 @@ def get_args():
     sp.add_argument("--ansible-inventory", help="Print Ansible inventory with spawned hosts", action='store_true')
     sp.add_argument("--init-config", help="Initialize configuration file for spawn functionality",
                     action='store_true')
+    sp.add_argument("--show-spawned", help="Show already spawned hosts", action='store_true')
     sp.add_argument("--platform", help="Platform to use", type=str)
     sp.add_argument("--count", help="How many hosts to spawn", type=int)
     sp.add_argument("--role", help="Role of the hosts", choices=["hub", "hubs", "client", "clients"])
@@ -163,6 +164,8 @@ def run_command_with_args(command, args):
             return commands.ansible_inventory()
         if args.init_config:
             return commands.init_cloud_config()
+        if args.show_spawned:
+            return commands.show_spawned()
         if args.name and "," in args.name:
             user_error("Group --name may not contain commas")
         if args.aws and args.gcp:
@@ -235,7 +238,7 @@ def validate_command(command, args):
         args.remote_command = args.remote_command[0]
 
     if (command == "spawn" and not args.list_platforms and not args.init_config
-        and not args.ansible_inventory):
+        and not args.ansible_inventory and not args.show_spawned):
         # The above options don't require any other options/arguments (TODO:
         # --provider), but otherwise all have to be given
         if not args.platform:

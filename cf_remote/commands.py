@@ -1,6 +1,7 @@
 import os
 import sys
 import time
+import tabulate
 from multiprocessing.dummy import Pool
 
 from cf_remote.remote import get_info, print_info, HostInstaller, uninstall_host, run_command, transfer_file, deploy_masterfiles
@@ -482,6 +483,25 @@ def init_cloud_config():
     }
     write_json(CLOUD_CONFIG_FPATH, empty_config)
     print("Config file %s created, please complete the configuration in it." % CLOUD_CONFIG_FPATH)
+    return 0
+
+def show_spawned():
+    if not os.path.exists(CLOUD_STATE_FPATH):
+        print("No saved cloud state info")
+        return 1
+
+    vms_info = read_json(CLOUD_STATE_FPATH)
+    vms = []
+    for group_name in vms_info:
+        vms += [{'platform': group_name}]
+        vms += [vms_info[group_name][name] for name in vms_info[group_name] if name != "meta"]
+        # TODO: I don't know which of this is better
+        # pretty_group_name = group_name.strip("@")
+        # print(pretty_group_name)
+        # print('='*len(pretty_group_name))
+        # vms = [vms_info[group_name][name] for name in vms_info[group_name] if name != "meta"]
+        # print(tabulate.tabulate(vms, headers="keys"))
+    print(tabulate.tabulate(vms, headers="keys"))
     return 0
 
 def ansible_inventory():

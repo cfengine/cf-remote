@@ -88,10 +88,8 @@ def get_args():
 
     sp = subp.add_parser("spawn", help="Spawn hosts in the clouds")
     sp.add_argument("--list-platforms", help="List supported platforms", action='store_true')
-    sp.add_argument("--ansible-inventory", help="Print Ansible inventory with spawned hosts", action='store_true')
     sp.add_argument("--init-config", help="Initialize configuration file for spawn functionality",
                     action='store_true')
-    sp.add_argument("--show-spawned", help="Show already spawned hosts", action='store_true')
     sp.add_argument("--platform", help="Platform to use", type=str)
     sp.add_argument("--count", help="How many hosts to spawn", type=int)
     sp.add_argument("--role", help="Role of the hosts", choices=["hub", "hubs", "client", "clients"])
@@ -106,6 +104,9 @@ def get_args():
                          " from some other VM in the same cloud/network!)",
                     action="store_true")
     # TODO: --region (optional)
+
+    sp = subp.add_parser("list-spawned", help="List already spawned hosts")
+    sp = subp.add_parser("ansible-inventory", help="Print Ansible inventory with spawned hosts")
 
     dp = subp.add_parser("destroy", help="Destroy hosts spawned in the clouds")
     dp.add_argument("--all", help="Destroy all hosts spawned in the clouds", action='store_true')
@@ -160,12 +161,8 @@ def run_command_with_args(command, args):
     elif command == "spawn":
         if args.list_platforms:
             return commands.list_platforms()
-        if args.ansible_inventory:
-            return commands.ansible_inventory()
         if args.init_config:
             return commands.init_cloud_config()
-        if args.show_spawned:
-            return commands.show_spawned()
         if args.name and "," in args.name:
             user_error("Group --name may not contain commas")
         if args.aws and args.gcp:
@@ -188,6 +185,10 @@ def run_command_with_args(command, args):
         return commands.spawn(args.platform, args.count, args.role, args.name,
                               provider=provider, size=args.size, network=args.network,
                               public_ip=not args.no_public_ip, extend_group=args.append)
+    elif command == "list-spawned":
+        return commands.show_spawned()
+    elif command == "ansible-inventory":
+        return commands.ansible_inventory()
     elif command == "destroy":
         group_name = args.name if args.name else None
         return commands.destroy(group_name)
@@ -237,8 +238,7 @@ def validate_command(command, args):
             user_error("cf-remote sude/run requires exactly 1 command (use quotes)")
         args.remote_command = args.remote_command[0]
 
-    if (command == "spawn" and not args.list_platforms and not args.init_config
-        and not args.ansible_inventory and not args.show_spawned):
+    if (command == "spawn" and not args.list_platforms and not args.init_config):
         # The above options don't require any other options/arguments (TODO:
         # --provider), but otherwise all have to be given
         if not args.platform:

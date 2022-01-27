@@ -105,8 +105,8 @@ def get_args():
                     action="store_true")
     # TODO: --region (optional)
 
-    sp = subp.add_parser("list-spawned", help="List already spawned hosts")
-    sp = subp.add_parser("ansible-inventory", help="Print Ansible inventory with spawned hosts")
+    sp = subp.add_parser("show", help="Show hosts spawned by or added to cf-remote")
+    sp = sp.add_argument("--ansible-inventory", help="Print Ansible inventory with spawned hosts", action='store_true')
 
     dp = subp.add_parser("destroy", help="Destroy hosts spawned in the clouds")
     dp.add_argument("--all", help="Destroy all hosts spawned in the clouds", action='store_true')
@@ -185,10 +185,8 @@ def run_command_with_args(command, args):
         return commands.spawn(args.platform, args.count, args.role, args.name,
                               provider=provider, size=args.size, network=args.network,
                               public_ip=not args.no_public_ip, extend_group=args.append)
-    elif command == "list-spawned":
-        return commands.show_spawned()
-    elif command == "ansible-inventory":
-        return commands.ansible_inventory()
+    elif command == "show":
+        return commands.show(args.ansible_inventory)
     elif command == "destroy":
         group_name = args.name if args.name else None
         return commands.destroy(group_name)

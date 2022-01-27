@@ -484,7 +484,8 @@ def init_cloud_config():
     print("Config file %s created, please complete the configuration in it." % CLOUD_CONFIG_FPATH)
     return 0
 
-def ansible_inventory():
+
+def _ansible_inventory():
     if not os.path.exists(CLOUD_STATE_FPATH):
         print("No saved cloud state info")
         return 1
@@ -528,6 +529,73 @@ def ansible_inventory():
             print(line)
         print()
 
+    return 0
+
+def _flatten(items):
+    flattened = []
+    for item in items:
+        if isinstance(item, (list, tuple)):
+            flattened.extend(_flatten(item))
+        else:
+            flattened.append(str(item))
+    return flattened
+
+def _print_indented_and_wrapped(strings, indent, wrap):
+    strings = _flatten(strings)
+    lines = []
+    line = ""
+    for index, string in enumerate(strings):
+        if index < len(strings) - 1:
+            string += ", "
+
+        if line == "":
+            line = " " * indent + string
+            continue
+
+        if len(line + string) >= wrap:
+            lines.append(line)
+            line = " " * indent + string
+            continue
+
+        line += string
+    if line != "":
+        lines.append(line)
+    for line in lines:
+        print(line)
+
+def show(ansible_inventory):
+    if ansible_inventory:
+        return _ansible_inventory()
+    if not os.path.exists(CLOUD_STATE_FPATH):
+        print("No saved cloud state info")
+        return 1
+
+    vms_info = read_json(CLOUD_STATE_FPATH)
+    if not vms_info:
+        print("No hosts found")
+        return 0
+    hosts = 0
+    groups = len(vms_info)
+    for group_name in vms_info:
+        extra = ""
+        group = vms_info[group_name]
+        if "meta" in group:
+            meta = group["meta"]
+            del group["meta"]
+            if "region" in meta and "provider" in meta:
+                extra = " in {}, {}".format(meta["region"], meta["provider"])
+        print("{}: ({} host{}{})".format(group_name, len(group), "s" if len(group) > 1 else "", extra))
+        hosts += len(group)
+        for name, vm in group.items():
+            role = vm["role"]
+            keywords = [v for k,v in vm.items() if k not in ("user", "role")]
+            keywords = [role, name] + keywords
+            identifier = "{}@{}".format(vm["user"], vm["public_ips"][0])
+            print("  " + identifier)
+            _print_indented_and_wrapped(keywords, 4, 80)
+        print("\n")
+    print("Total: {} host{} in {} group{}".format(
+        hosts, "s" if hosts > 1 else "", groups, "s" if groups > 1 else ""))
     return 0
 
 def uninstall(hosts):

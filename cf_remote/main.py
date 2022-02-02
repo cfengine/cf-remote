@@ -76,6 +76,11 @@ def get_args():
     sp.add_argument("--raw", help="Print only output of command itself", action='store_true')
     sp.add_argument("remote_command", help="Command to execute on remote host (including args)", type=str, nargs=1)
 
+    sp = subp.add_parser("save", help="Spawn hosts in the clouds")
+    sp.add_argument("--role", help="Role of the hosts", choices=["hub", "hubs", "client", "clients"], required=True)
+    sp.add_argument("--name", help="Name of the group of hosts (can be used in other commands)", required=True)
+    sp.add_argument("--hosts", "-H", help="SSH usernames and IPs for SSH and CFEngine in the form of user@ip", required=True)
+
     sp = subp.add_parser("sudo",
                          help="Run the command given as arguments on the given hosts with 'sudo'")
     sp.add_argument("--hosts", "-H", help="Which hosts to run the command on", type=str, required=True)
@@ -154,6 +159,8 @@ def run_command_with_args(command, args):
         return commands.download(tags=args.tags, version=args.version, edition=args.edition)
     elif command == "run":
         return commands.run(hosts=args.hosts, raw=args.raw, command=args.remote_command)
+    elif command == "save":
+        return commands.save(hosts=args.hosts, role=args.role, name=args.name)
     elif command == "sudo":
         return commands.sudo(hosts=args.hosts, raw=args.raw, command=args.remote_command)
     elif command == "scp":
@@ -282,7 +289,7 @@ def is_in_cloud_state(name):
     return False
 
 
-def get_cloud_hosts(name, private_ips=False):
+def get_cloud_hosts(name, bootstrap_ips=False):
     if not os.path.exists(paths.CLOUD_STATE_FPATH):
         return []
 
@@ -313,7 +320,7 @@ def get_cloud_hosts(name, private_ips=False):
 
     ret = []
     for host in hosts:
-        if private_ips:
+        if bootstrap_ips and "private_ips" in host:
             key = "private_ips"
         else:
             key = "public_ips"
@@ -330,7 +337,7 @@ def get_cloud_hosts(name, private_ips=False):
     return ret
 
 
-def resolve_hosts(string, single=False, private_ips=False):
+def resolve_hosts(string, single=False, bootstrap_ips=False):
     log.debug("resolving hosts from '{}'".format(string))
     if is_file_string(string):
         names = expand_list_from_file(string)
@@ -341,7 +348,7 @@ def resolve_hosts(string, single=False, private_ips=False):
 
     for name in names:
         if is_in_cloud_state(name):
-            hosts = get_cloud_hosts(name, private_ips)
+            hosts = get_cloud_hosts(name, bootstrap_ips)
             ret.extend(hosts)
             log.debug("found in cloud, adding '{}'".format(hosts))
         else:
@@ -370,7 +377,7 @@ def validate_args(args):
         args.clients = resolve_hosts(args.clients)
     if "bootstrap" in args and args.bootstrap:
         args.bootstrap = [
-            strip_user(host_info) for host_info in resolve_hosts(args.bootstrap, private_ips=True)
+            strip_user(host_info) for host_info in resolve_hosts(args.bootstrap, bootstrap_ips=True)
         ]
     if "hub" in args and args.hub:
         args.hub = resolve_hosts(args.hub)

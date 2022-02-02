@@ -358,6 +358,18 @@ def spawn(platform, count, role, group_name, provider=Providers.AWS, region=None
 
     return 0
 
+def _is_saved_group(vms_info, group_name):
+    group = vms_info[group_name]
+    return (group.get("meta", {}).get("saved") == True)
+
+def _delete_saved_group(vms_info, group_name):
+    print("Deleting saved group '{}' without terminating VMs:".format(group_name))
+    for name, vm in vms_info[group_name].items():
+        if name == "meta":
+            continue
+        print("  {}: {}@{} ({})".format(name, vm["user"], vm["public_ips"][0], vm["role"]))
+    del vms_info[group_name]
+
 def destroy(group_name=None):
     if os.path.exists(CLOUD_CONFIG_FPATH):
         creds_data = read_json(CLOUD_CONFIG_FPATH)
@@ -392,12 +404,18 @@ def destroy(group_name=None):
 
     to_destroy = []
     if group_name:
-        print("Destroying hosts in the '%s' group" % group_name)
         if not group_name.startswith("@"):
             group_name = "@" + group_name
         if group_name not in vms_info:
             print("Group '%s' not found" % group_name)
             return 1
+
+        if (_is_saved_group(vms_info, group_name)):
+            _delete_saved_group(vms_info, group_name)
+            write_json(CLOUD_STATE_FPATH, vms_info)
+            return 0
+
+        print("Destroying hosts in the '%s' group" % group_name)
 
         region = vms_info[group_name]["meta"]["region"]
         provider = vms_info[group_name]["meta"]["provider"]
@@ -426,6 +444,10 @@ def destroy(group_name=None):
     else:
         print("Destroying all hosts")
         for group_name in [key for key in vms_info.keys() if key.startswith("@")]:
+            if (_is_saved_group(vms_info, group_name)):
+                _delete_saved_group(vms_info, group_name)
+                continue
+
             region = vms_info[group_name]["meta"]["region"]
             provider = vms_info[group_name]["meta"]["provider"]
             if provider == "aws":
@@ -482,6 +504,31 @@ def init_cloud_config():
     }
     write_json(CLOUD_CONFIG_FPATH, empty_config)
     print("Config file %s created, please complete the configuration in it." % CLOUD_CONFIG_FPATH)
+    return 0
+
+
+def save(name, hosts, role):
+    state = read_json(CLOUD_STATE_FPATH)
+    if not state:
+        state = {}
+    if "@" + name in state:
+        print("Group '{}' already exists".format(name))
+        return 1
+    group = {"meta": {"saved": True}}
+    for index, host in enumerate(hosts):
+        split = host.split("@")
+        if len(split) != 2:
+            print("Host '{}' not accepted, must be given as user@ip-address".format(host))
+            return 1
+        user, ip = host.split("@")
+        instance = {
+            "public_ips": [ip],
+            "user": user,
+            "role": role,
+        }
+        group[name + "-" + str(index + 1)] = instance
+    state["@" + name] = group
+    write_json(CLOUD_STATE_FPATH, state)
     return 0
 
 

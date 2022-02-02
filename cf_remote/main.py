@@ -289,7 +289,7 @@ def is_in_cloud_state(name):
     return False
 
 
-def get_cloud_hosts(name, private_ips=False):
+def get_cloud_hosts(name, bootstrap_ips=False):
     if not os.path.exists(paths.CLOUD_STATE_FPATH):
         return []
 
@@ -320,7 +320,7 @@ def get_cloud_hosts(name, private_ips=False):
 
     ret = []
     for host in hosts:
-        if private_ips and "private_ips" in host:
+        if bootstrap_ips and "private_ips" in host:
             key = "private_ips"
         else:
             key = "public_ips"
@@ -337,7 +337,7 @@ def get_cloud_hosts(name, private_ips=False):
     return ret
 
 
-def resolve_hosts(string, single=False, private_ips=False):
+def resolve_hosts(string, single=False, bootstrap_ips=False):
     log.debug("resolving hosts from '{}'".format(string))
     if is_file_string(string):
         names = expand_list_from_file(string)
@@ -348,7 +348,7 @@ def resolve_hosts(string, single=False, private_ips=False):
 
     for name in names:
         if is_in_cloud_state(name):
-            hosts = get_cloud_hosts(name, private_ips)
+            hosts = get_cloud_hosts(name, bootstrap_ips)
             ret.extend(hosts)
             log.debug("found in cloud, adding '{}'".format(hosts))
         else:
@@ -377,7 +377,7 @@ def validate_args(args):
         args.clients = resolve_hosts(args.clients)
     if "bootstrap" in args and args.bootstrap:
         args.bootstrap = [
-            strip_user(host_info) for host_info in resolve_hosts(args.bootstrap, private_ips=True)
+            strip_user(host_info) for host_info in resolve_hosts(args.bootstrap, bootstrap_ips=True)
         ]
     if "hub" in args and args.hub:
         args.hub = resolve_hosts(args.hub)

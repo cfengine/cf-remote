@@ -360,9 +360,7 @@ def spawn(platform, count, role, group_name, provider=Providers.AWS, region=None
 
 def _is_saved_group(vms_info, group_name):
     group = vms_info[group_name]
-    return ("meta" not in group
-            or "region" not in group["meta"]
-            or "provider" not in group["meta"])
+    return (group.get("meta", {}).get("saved") == True)
 
 def _delete_saved_group(vms_info, group_name):
     print("Deleting saved group '{}' without terminating VMs:".format(group_name))
@@ -516,18 +514,18 @@ def save(name, hosts, role):
     if "@" + name in state:
         print("Group '{}' already exists".format(name))
         return 1
-    group = {}
-    group["meta"] = {}
+    group = {"meta": {"saved": True}}
     for index, host in enumerate(hosts):
         split = host.split("@")
         if len(split) != 2:
             print("Host '{}' not accepted, must be given as user@ip-address".format(host))
             return 1
         user, ip = host.split("@")
-        instance = {}
-        instance["public_ips"] = [ip]
-        instance["user"] = user
-        instance["role"] = role
+        instance = {
+            "public_ips": [ip],
+            "user": user,
+            "role": role,
+        }
         group[name + "-" + str(index + 1)] = instance
     state["@" + name] = group
     write_json(CLOUD_STATE_FPATH, state)

@@ -76,6 +76,11 @@ def get_args():
     sp.add_argument("--raw", help="Print only output of command itself", action='store_true')
     sp.add_argument("remote_command", help="Command to execute on remote host (including args)", type=str, nargs=1)
 
+    sp = subp.add_parser("save", help="Spawn hosts in the clouds")
+    sp.add_argument("--role", help="Role of the hosts", choices=["hub", "hubs", "client", "clients"], required=True)
+    sp.add_argument("--name", help="Name of the group of hosts (can be used in other commands)", required=True)
+    sp.add_argument("--hosts", "-H", help="SSH usernames and IPs for SSH and CFEngine in the form of user@ip", required=True)
+
     sp = subp.add_parser("sudo",
                          help="Run the command given as arguments on the given hosts with 'sudo'")
     sp.add_argument("--hosts", "-H", help="Which hosts to run the command on", type=str, required=True)
@@ -154,6 +159,8 @@ def run_command_with_args(command, args):
         return commands.download(tags=args.tags, version=args.version, edition=args.edition)
     elif command == "run":
         return commands.run(hosts=args.hosts, raw=args.raw, command=args.remote_command)
+    elif command == "save":
+        return commands.save(hosts=args.hosts, role=args.role, name=args.name)
     elif command == "sudo":
         return commands.sudo(hosts=args.hosts, raw=args.raw, command=args.remote_command)
     elif command == "scp":
@@ -313,7 +320,7 @@ def get_cloud_hosts(name, private_ips=False):
 
     ret = []
     for host in hosts:
-        if private_ips:
+        if private_ips and "private_ips" in host:
             key = "private_ips"
         else:
             key = "public_ips"

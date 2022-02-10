@@ -406,16 +406,16 @@ def deploy_masterfiles(host, tarball, *, connection=None):
     if not data["agent_version"]:
         log.error(f"Cannot deploy masterfiles on {host} - CFEngine not installed")
         return 1
-    
+
     if not getattr(connection, 'is_local', False):
         scp(tarball, host, connection=connection, rename="masterfiles.tgz")
         tarball = "masterfiles.tgz"
     ssh_cmd(connection, f"tar -xzf {tarball}")
     commands = [
-        "systemctl stop cfengine3",
-        "rm -rf /var/cfengine/masterfiles",
+        "rm -rf /var/cfengine/masterfiles.delete",
+        "mv /var/cfengine/masterfiles /var/cfengine/masterfiles.delete",
         "mv masterfiles /var/cfengine/masterfiles",
-        "systemctl start cfengine3",
+        "rm -rf /var/cfengine/masterfiles.delete",
         "cf-agent -Kf update.cf",
         "cf-agent -K",
     ]

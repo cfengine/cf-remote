@@ -6,7 +6,7 @@ from cf_remote import log
 from cf_remote import version
 from cf_remote import commands, paths
 from cf_remote.utils import user_error, exit_success, expand_list_from_file, is_file_string
-from cf_remote.utils import strip_user, read_json, is_package_url
+from cf_remote.utils import strip_user, read_json, is_package_url, cache
 from cf_remote.packages import Releases
 from cf_remote.spawn import Providers
 
@@ -17,8 +17,8 @@ def print_version_info():
     releases = Releases()
     print(releases)
 
-
-def get_args():
+@cache
+def _get_arg_parser():
     ap = argparse.ArgumentParser(
         description="Spooky CFEngine at a distance",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter)
@@ -121,6 +121,10 @@ def get_args():
     sp.add_argument("--hub", help="Hub(s) to deploy to", type=str, required=True)
     sp.add_argument("masterfiles", help="Path to local masterfiles directory or tarball", type=str)
 
+    return ap
+
+def get_args():
+    ap = _get_arg_parser()
     args = ap.parse_args()
     return args
 
@@ -383,6 +387,7 @@ def validate_args(args):
         args.hub = resolve_hosts(args.hub)
 
     if not args.command:
+        _get_arg_parser().print_help()
         user_error("Invalid or missing command")
     args.command = args.command.strip()
     validate_command(args.command, args)

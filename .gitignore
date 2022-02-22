@@ -5,3 +5,4 @@ dist
 /cf_remote.egg-info/
 /venv
 /.venv
+__pycache__/

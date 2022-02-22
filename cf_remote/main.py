@@ -76,7 +76,7 @@ def get_args():
     sp.add_argument("--raw", help="Print only output of command itself", action='store_true')
     sp.add_argument("remote_command", help="Command to execute on remote host (including args)", type=str, nargs=1)
 
-    sp = subp.add_parser("save", help="Spawn hosts in the clouds")
+    sp = subp.add_parser("save", help="Save host(s) with a group name to use in other commands")
     sp.add_argument("--role", help="Role of the hosts", choices=["hub", "hubs", "client", "clients"], required=True)
     sp.add_argument("--name", help="Name of the group of hosts (can be used in other commands)", required=True)
     sp.add_argument("--hosts", "-H", help="SSH usernames and IPs for SSH and CFEngine in the form of user@ip", required=True)

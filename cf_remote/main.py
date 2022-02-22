@@ -118,8 +118,8 @@ def _get_arg_parser():
     dp.add_argument("name", help="Name fo the group of hosts to destroy", nargs='?')
 
     sp = subp.add_parser("deploy", help="Deploy masterfiles to hub")
-    sp.add_argument("--hub", help="Hub(s) to deploy to", type=str, required=True)
-    sp.add_argument("masterfiles", help="Path to local masterfiles directory or tarball", type=str)
+    sp.add_argument("--hub", help="Hub(s) to deploy to", type=str)
+    sp.add_argument("masterfiles", help="Path to local masterfiles directory or tarball", type=str, nargs="?")
 
     return ap
 
@@ -263,16 +263,13 @@ def validate_command(command, args):
         if not args.all and not args.name:
             user_error("One of --all or NAME required for destroy")
 
-    if command == "deploy":
-        if not args.masterfiles:
-            user_error("Must specify a path to masterfiles")
-        if not args.hub:
-            user_error("Must specify at least one hub")
-        if args.masterfiles.startswith(("http://", "https://")):
-            if not args.masterfiles.endswith((".tgz", ".tar.gz")):
+    if command == "deploy" and args.masterfiles:
+        masterfiles = args.masterfiles
+        if masterfiles.startswith(("http://", "https://")):
+            if not masterfiles.endswith((".tgz", ".tar.gz")):
                 user_error("masterfiles URL must be to a gzipped tarball (.tgz or .tar.gz)")
-        elif not os.path.exists(args.masterfiles):
-            user_error(f"'{args.masterfiles}' does not exist")
+        elif not os.path.exists(masterfiles):
+            user_error(f"'{masterfiles}' does not exist")
 
 
 def is_in_cloud_state(name):

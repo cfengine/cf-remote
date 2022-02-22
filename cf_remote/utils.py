@@ -14,6 +14,18 @@ def is_in_past(date):
     return now > date
 
 
+def cache(func):
+    '''Memoization decorator similar to functools.cache (Python 3.9+)'''
+    memo = {}
+    def wrapper(*args, **kwargs):
+        kwargs = OrderedDict(sorted(kwargs.items()))
+        key = str({"args": args, "kwargs": kwargs})
+        if key not in memo:
+            memo[key] = func(*args, **kwargs)
+        return memo[key]
+    return wrapper
+
+
 def canonify(string):
     legal = "abcdefghijklmnopqrstuvwxyz0123456789-_"
     string = string.strip()

@@ -59,10 +59,7 @@ class Artifact:
         self.add_tags_from_filename(self.filename)
 
     def add_tag(self, string):
-        if sys.version_info[0] == 2:
-            assert type(string) in (str, unicode)
-        else:
-            assert type(string) is str
+        assert type(string) is str
 
         canonified = canonify(string)
         if canonified not in self.tags:

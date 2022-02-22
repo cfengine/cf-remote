@@ -98,6 +98,8 @@ def scp(file, remote, connection=None, rename=None):
         connection.put(file)
         if rename:
             file = os.path.basename(file)
+            if file == rename:
+                return 0
             print(f"Renaming '{file}' -> '{rename}' on '{remote}'")
             ssh_cmd(connection, f"mv {file} {rename}")
     return 0

@@ -663,8 +663,35 @@ def deploy_tarball(hubs, tarball):
         errors += deploy_masterfiles(hub, tarball)
     return errors
 
+def _get_hubs():
+    if not os.path.exists(CLOUD_STATE_FPATH):
+        return None
+    groups = read_json(CLOUD_STATE_FPATH)
+    if not groups:
+        return None
+    hubs = []
+    for name, group in groups.items():
+        for name, vm in group.items():
+            if name == "meta":
+                continue
+            if vm["role"] == "hub":
+                identifier = "{}@{}".format(vm["user"], vm["public_ips"][0])
+                hubs.append(identifier)
+    return hubs
+
 def deploy(hubs, masterfiles):
-    if masterfiles.startswith(("http://", "https://")):
+    if not hubs:
+        hubs = _get_hubs()
+        if hubs:
+            print("Found saved/spawned hubs: " + ", ".join(hubs))
+
+    if not hubs:
+        user_error("No hub to deploy to (Specify with --hub or use spawn/save commands to add to cf-remote)")
+
+    if not masterfiles and os.path.isfile("cfbs.json") and os.path.isfile("out/masterfiles.tgz"):
+        masterfiles = "out/masterfiles.tgz"
+        print("Found cfbs policy set: '{}'".format(masterfiles))
+    elif masterfiles.startswith(("http://", "https://")):
         urls = [masterfiles]
         paths = _download_urls(urls)
         assert len(paths) == 1
@@ -678,6 +705,15 @@ def deploy(hubs, masterfiles):
 
     if os.path.isfile(masterfiles):
         return deploy_tarball(hubs, masterfiles)
+
+    if masterfiles.endswith(".tgz"):
+        if not os.path.exists(masterfiles):
+            log.error("'{}' does not exist".format(masterfiles))
+            return 1
+        else:
+            assert not os.path.isfile(masterfiles)
+            log.error("'{}' is not a file".format(masterfiles))
+            return 1
 
     if not os.path.isdir(masterfiles):
         log.error(f"'{masterfiles}' must be a directory")

@@ -706,7 +706,7 @@ def deploy(hubs, masterfiles):
     if os.path.isfile(masterfiles):
         return deploy_tarball(hubs, masterfiles)
 
-    if masterfiles.endswith(".tgz"):
+    if masterfiles.endswith((".tgz", ".tar.gz")):
         if not os.path.exists(masterfiles):
             log.error("'{}' does not exist".format(masterfiles))
             return 1

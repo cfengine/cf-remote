@@ -374,11 +374,10 @@ def destroy(group_name=None):
     if os.path.exists(CLOUD_CONFIG_FPATH):
         creds_data = read_json(CLOUD_CONFIG_FPATH)
     else:
-        print("Cloud credentials not found at %s" % CLOUD_CONFIG_FPATH)
-        return 1
+        creds_data = None
 
     aws_creds = _get_aws_creds_from_env()
-    if not aws_creds:
+    if not aws_creds and creds_data:
         try:
             aws_creds = AWSCredentials(creds_data["aws"]["key"],
                                        creds_data["aws"]["secret"],
@@ -388,13 +387,14 @@ def destroy(group_name=None):
             pass
 
     gcp_creds = None
-    try:
-        gcp_creds = GCPCredentials(creds_data["gcp"]["project_id"],
-                                   creds_data["gcp"]["service_account_id"],
-                                   creds_data["gcp"]["key_path"])
-    except KeyError:
-        # missing/incomplete GCP credentials, may not be needed, though
-        pass
+    if creds_data:
+        try:
+            gcp_creds = GCPCredentials(creds_data["gcp"]["project_id"],
+                                       creds_data["gcp"]["service_account_id"],
+                                       creds_data["gcp"]["key_path"])
+        except KeyError:
+            # missing/incomplete GCP credentials, may not be needed, though
+            pass
 
     if not os.path.exists(CLOUD_STATE_FPATH):
         print("No saved cloud state info")

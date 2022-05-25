@@ -33,6 +33,8 @@ class Providers(Enum):
     def __str__(self):
         return self.name.lower()
 
+class MissingInfoError(ValueError):
+    pass
 
 class VM:
     def __init__(self, name, driver, node, role=None,
@@ -125,7 +127,11 @@ class VM:
 
     @property
     def region(self):
-        data = self._node or self._data
+        try:
+            data = self._node or self._data
+        except MissingInfoError:
+            return "uknown"
+
         if "zone" in data.extra:
             return data.extra["zone"].name
 
@@ -169,19 +175,28 @@ class VM:
         for node in self._driver.list_nodes():
             if node is self._node or node.uuid == self._node.uuid:
                 return node
-        raise RuntimeError("Cannot find data for '%s' in its driver" % self._name)
+        raise MissingInfoError("Cannot find data for '%s' in its driver" % self._name)
 
     @property
     def state(self):
-        return self._data.state
+        try:
+            return self._data.state
+        except MissingInfoError:
+            return "unknown"
 
     @property
     def public_ips(self):
-        return self._data.public_ips or []
+        try:
+            return self._data.public_ips or []
+        except MissingInfoError:
+            return []
 
     @property
     def private_ips(self):
-        return self._data.private_ips or []
+        try:
+            return self._data.private_ips or []
+        except MissingInfoError:
+            return []
 
     @property
     def info(self):

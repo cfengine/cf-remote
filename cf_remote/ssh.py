@@ -1,13 +1,10 @@
 import os
 import sys
-import fabric
 import pwd
 import shutil
 import subprocess
 
-from paramiko.ssh_exception import AuthenticationException
-from invoke.exceptions import UnexpectedExit
-
+from cf_remote import aramid
 from cf_remote import log
 from cf_remote.utils import whoami
 
@@ -28,6 +25,35 @@ class LocalConnection:
         dst = os.path.basename(src)
         if src != dst:
             shutil.copy(src, dst)
+
+
+class Connection:
+    def __init__(self, host, user, connect_kwargs=None):
+        self.ssh_host = host
+        self.ssh_user = user
+        self._connect_kwargs = connect_kwargs
+
+    def run(self, command, hide=False, pty=False):
+        extra_ssh_args = []
+        if pty:
+            extra_ssh_args.append("-tt")
+        if "key_filename" in self._connect_kwargs:
+            extra_ssh_args.extend(["-i", self._connect_kwargs["key_filename"]])
+
+        ahost = aramid.Host(self.ssh_host, self.ssh_user, extra_ssh_args)
+        results = aramid.execute([ahost], command, echo=(not hide))
+        return results[ahost][0]
+
+    def put(self, src):
+        ahost = aramid.Host(self.ssh_host, self.ssh_user)
+        results = aramid.put([ahost], src)
+        return results[ahost][0].retcode
+
+    def __enter__(self, *args, **kwargs):
+        return self
+
+    def __exit__(self, *args, **kwargs):
+        pass
 
 
 def connect(host, users=None):
@@ -60,12 +86,12 @@ def connect(host, users=None):
             key = os.getenv("CF_REMOTE_SSH_KEY")
             if key:
                 connect_kwargs["key_filename"] = os.path.expanduser(key)
-            c = fabric.Connection(host=host, user=user, connect_kwargs=connect_kwargs)
+            c = Connection(host=host, user=user, connect_kwargs=connect_kwargs)
             c.ssh_user = user
             c.ssh_host = host
             c.run("whoami", hide=True)
             return c
-        except AuthenticationException:
+        except aramid.ExecutionError:
             continue
     sys.exit(f"Could not ssh into '{host}'")
 
@@ -107,39 +133,41 @@ def scp(file, remote, connection=None, rename=None):
 
 def ssh_cmd(connection, cmd, errors=False):
     assert connection
-    try:
-        log.debug(f"Running over SSH: '{cmd}'")
-        result = connection.run(cmd, hide=True)
+
+    log.debug(f"Running over SSH: '{cmd}'")
+    result = connection.run(cmd, hide=True)
+    if result.retcode == 0:
         output = result.stdout.replace("\r\n", "\n").strip("\n")
         log.debug(f"'{cmd}' -> '{output}'")
         return output
-    except UnexpectedExit as e:
-        msg = f"Non-sudo command unexpectedly exited: '{cmd}'"
+    else:
+        msg = f"Non-sudo command unexpectedly exited: '{cmd}' [{result.retcode}]"
         if errors:
-            print(e)
+            print(result.stdout + result.stderr)
             log.error(msg)
         else:
-            log.debug(str(e))
+            log.debug(result.stdout + result.stderr)
             log.debug(msg)
         return None
 
 
 def ssh_sudo(connection, cmd, errors=False):
     assert connection
-    try:
-        log.debug(f"Running(sudo) over SSH: '{cmd}'")
-        escaped = cmd.replace('"', r"\"")
-        sudo_cmd = f'sudo bash -c "{escaped}"'
-        result = connection.run(sudo_cmd, hide=True, pty=True)
+
+    log.debug(f"Running(sudo) over SSH: '{cmd}'")
+    escaped = cmd.replace('"', r"\"")
+    sudo_cmd = f'sudo bash -c "{escaped}"'
+    result = connection.run(sudo_cmd, hide=True, pty=True)
+    if result.retcode == 0:
         output = result.stdout.strip("\n")
         log.debug(f"'{cmd}' -> '{output}'")
         return output
-    except UnexpectedExit as e:
-        msg = f"Sudo command unexpectedly exited: '{cmd}'"
+    else:
+        msg = f"Sudo command unexpectedly exited: '{cmd}' [{result.retcode}]"
         if errors:
-            print(e)
+            print(result.stdout + result.stderr)
             log.error(msg)
         else:
-            log.debug(str(e))
+            log.debug(result.stdout + result.stderr)
             log.debug(msg)
         return None

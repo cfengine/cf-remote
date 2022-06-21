@@ -17,7 +17,7 @@ class LocalConnection:
     def __init__(self):
         self.ssh_user = pwd.getpwuid(os.getuid()).pw_name
 
-    def run(self, command, hide=False, pty=False):
+    def run(self, command, hide=False):
         return subprocess.run(command, capture_output=True, shell=True, text=True)
 
     def put(self, src):
@@ -33,10 +33,8 @@ class Connection:
         self.ssh_user = user
         self._connect_kwargs = connect_kwargs
 
-    def run(self, command, hide=False, pty=False):
+    def run(self, command, hide=False):
         extra_ssh_args = []
-        if pty:
-            extra_ssh_args.append("-tt")
         if "key_filename" in self._connect_kwargs:
             extra_ssh_args.extend(["-i", self._connect_kwargs["key_filename"]])
 
@@ -157,7 +155,7 @@ def ssh_sudo(connection, cmd, errors=False):
     log.debug(f"Running(sudo) over SSH: '{cmd}'")
     escaped = cmd.replace('"', r"\"")
     sudo_cmd = f'sudo bash -c "{escaped}"'
-    result = connection.run(sudo_cmd, hide=True, pty=True)
+    result = connection.run(sudo_cmd, hide=True)
     if result.retcode == 0:
         output = result.stdout.strip("\n")
         log.debug(f"'{cmd}' -> '{output}'")

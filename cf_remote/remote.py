@@ -182,7 +182,7 @@ def install_package(host, pkg, data, *, connection=None):
         # timeout doesn't work over ssh.
         output = ssh_cmd(connection, powershell(r'.\{} ; sleep 10'.format(pkg)), True)
     else:
-        output = ssh_sudo(connection, "rpm -i {}".format(pkg), True)
+        output = ssh_sudo(connection, "yum -y install {}".format(pkg), True)
     if output is None:
         sys.exit("Installation failed on '{}'".format(host))
 

@@ -3,4 +3,3 @@ fabric==2.6.0
 paramiko==2.10.1
 requests==2.25.1
 apache-libcloud==3.3.1
-tabulate==0.8.9

@@ -43,8 +43,9 @@ class Connection:
         return results[ahost][0]
 
     def put(self, src):
+        dst = os.path.basename(src)
         ahost = aramid.Host(self.ssh_host, self.ssh_user)
-        results = aramid.put([ahost], src)
+        results = aramid.put([ahost], src, dst)
         return results[ahost][0].retcode
 
     def __enter__(self, *args, **kwargs):

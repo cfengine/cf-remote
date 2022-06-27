@@ -56,8 +56,8 @@ class Connection:
 
 
 def connect(host, users=None):
-    log.debug(f"Connecting to '{host}'")
-    log.debug(f"users= '{users}'")
+    log.debug("Connecting to '%s'" % host)
+    log.debug("users= '%s'" % users)
     if "@" in host:
         parts = host.split("@")
         assert len(parts) == 2
@@ -80,7 +80,7 @@ def connect(host, users=None):
             users = [whoami()] + users
     for user in users:
         try:
-            log.debug(f"Attempting ssh: {user}@{host}")
+            log.debug("Attempting ssh: %s@%s" % (user, host))
             connect_kwargs = {}
             key = os.getenv("CF_REMOTE_SSH_KEY")
             if key:
@@ -92,7 +92,7 @@ def connect(host, users=None):
             return c
         except aramid.ExecutionError:
             continue
-    sys.exit(f"Could not ssh into '{host}'")
+    sys.exit("Could not ssh into '%s'" % host)
 
 
 # Decorator to make a function automatically connect
@@ -119,28 +119,28 @@ def scp(file, remote, connection=None, rename=None):
         with connect(remote) as connection:
             scp(file, remote, connection, rename)
     else:
-        print(f"Copying: '{file}' to '{remote}'")
+        print("Copying: '%s' to '%s'" % (file, remote))
         connection.put(file)
         if rename:
             file = os.path.basename(file)
             if file == rename:
                 return 0
-            print(f"Renaming '{file}' -> '{rename}' on '{remote}'")
-            ssh_cmd(connection, f"mv {file} {rename}")
+            print("Renaming '%s' -> '%s' on '%s'" % (file, rename, remote))
+            ssh_cmd(connection, "mv %s %s" % (file, rename))
     return 0
 
 
 def ssh_cmd(connection, cmd, errors=False):
     assert connection
 
-    log.debug(f"Running over SSH: '{cmd}'")
+    log.debug("Running over SSH: '%s'" % cmd)
     result = connection.run(cmd, hide=True)
     if result.retcode == 0:
         output = result.stdout.replace("\r\n", "\n").strip("\n")
-        log.debug(f"'{cmd}' -> '{output}'")
+        log.debug("'%s' -> '%s'" % (cmd, output))
         return output
     else:
-        msg = f"Non-sudo command unexpectedly exited: '{cmd}' [{result.retcode}]"
+        msg = "Non-sudo command unexpectedly exited: '%s' [%d]" % (cmd, result.retcode)
         if errors:
             print(result.stdout + result.stderr)
             log.error(msg)
@@ -153,16 +153,16 @@ def ssh_cmd(connection, cmd, errors=False):
 def ssh_sudo(connection, cmd, errors=False):
     assert connection
 
-    log.debug(f"Running(sudo) over SSH: '{cmd}'")
+    log.debug("Running(sudo) over SSH: '%s'" %cmd)
     escaped = cmd.replace('"', r"\"")
-    sudo_cmd = f'sudo bash -c "{escaped}"'
+    sudo_cmd = 'sudo bash -c "%s"' % escaped
     result = connection.run(sudo_cmd, hide=True)
     if result.retcode == 0:
         output = result.stdout.strip("\n")
-        log.debug(f"'{cmd}' -> '{output}'")
+        log.debug("'%s' -> '%s'" % (cmd, output))
         return output
     else:
-        msg = f"Sudo command unexpectedly exited: '{cmd}' [{result.retcode}]"
+        msg = "Sudo command unexpectedly exited: '%s' [%d]" % (cmd, result.retcode)
         if errors:
             print(result.stdout + result.stderr)
             log.error(msg)

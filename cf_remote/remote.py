@@ -324,7 +324,7 @@ def install_host(
         return 1
 
     if remote_download:
-        print(f"Downloading '{package}' on '{host}' using curl")
+        print("Downloading '%s' on '%s' using curl" % (package, host))
         r = ssh_cmd(cmd="curl --fail -O {}".format(package), connection=connection, errors=True)
         if r is None:
             return 1
@@ -404,13 +404,13 @@ def deploy_masterfiles(host, tarball, *, connection=None):
     print("\nDeploying to:")
     print_info(data)
     if not data["agent_version"]:
-        log.error(f"Cannot deploy masterfiles on {host} - CFEngine not installed")
+        log.error("Cannot deploy masterfiles on %s - CFEngine not installed" % host)
         return 1
 
     if not getattr(connection, 'is_local', False):
         scp(tarball, host, connection=connection, rename="masterfiles.tgz")
         tarball = "masterfiles.tgz"
-    ssh_cmd(connection, f"tar -xzf {tarball}")
+    ssh_cmd(connection, "tar -xzf %s" % tarball)
     commands = [
         "rm -rf /var/cfengine/masterfiles.delete",
         "mv /var/cfengine/masterfiles /var/cfengine/masterfiles.delete",
@@ -420,6 +420,6 @@ def deploy_masterfiles(host, tarball, *, connection=None):
         "cf-agent -K",
     ]
     combined = " && ".join(commands)
-    print(f"Running: '{combined}'")
+    print("Running: '%s'" % combined)
     ssh_sudo(connection, combined)
     return 0

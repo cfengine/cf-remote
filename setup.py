@@ -21,7 +21,7 @@ assert "." in cf_remote_version
 
 assert os.path.isfile("cf_remote/version.py")
 with open("cf_remote/VERSION", "w", encoding="utf-8") as fh:
-    fh.write(f"{cf_remote_version}\n")
+    fh.write("%s\n" % cf_remote_version)
 
 with open("README.md", "r", encoding="utf-8") as fh:
     long_description = fh.read()

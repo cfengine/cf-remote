@@ -28,7 +28,7 @@ from collections import namedtuple
 import subprocess
 import time
 
-DEFAULT_SSH_ARGS = ["-o", "LogLevel=ERROR", "-o", "UserKnownHostsFile=/dev/null", "-o", "StrictHostKeyChecking=no", "-o", "BatchMode=yes"]
+DEFAULT_SSH_ARGS = ["-oLogLevel=ERROR", "-oUserKnownHostsFile=/dev/null", "-oStrictHostKeyChecking=no", "-oBatchMode=yes", "-oHostKeyAlgorithms=+ssh-rsa",  "-oPubkeyAcceptedKeyTypes=+ssh-rsa"]
 """Default arguments to use with all SSH commands (incl. 'scp' and 'rsync')"""
 
 PRINT_OUT_FN = print

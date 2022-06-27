@@ -40,7 +40,7 @@ def canonify(string):
 
 
 def user_error(msg):
-    sys.exit(f"{os.path.basename(sys.argv[0])}: " + msg)
+    sys.exit("%s: " % os.path.basename(sys.argv[0]) + msg)
 
 
 def exit_success():

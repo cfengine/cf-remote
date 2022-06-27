@@ -21,7 +21,7 @@ assert "." in cf_remote_version
 
 assert os.path.isfile("cf_remote/version.py")
 with open("cf_remote/VERSION", "w", encoding="utf-8") as fh:
-    fh.write(f"{cf_remote_version}\n")
+    fh.write("%s\n" % cf_remote_version)
 
 with open("README.md", "r", encoding="utf-8") as fh:
     long_description = fh.read()
@@ -43,7 +43,7 @@ setuptools.setup(
         "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
         "Operating System :: OS Independent",
     ],
-    python_requires=">=3.6",
+    python_requires=">=3.5",
     entry_points={"console_scripts": ["cf-remote = cf_remote.main:main"]},
     install_requires=[
         "requests >= 2.25.1",

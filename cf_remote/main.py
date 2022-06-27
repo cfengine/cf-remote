@@ -12,7 +12,7 @@ from cf_remote.spawn import Providers
 
 
 def print_version_info():
-    print(f"cf-remote version {version.string()}")
+    print("cf-remote version %s" % version.string())
     print("Available CFEngine versions:")
     releases = Releases()
     print(releases)
@@ -234,13 +234,13 @@ def validate_command(command, args):
                 "--package cannot be used in combination with --hub-package / --client-package")
         if args.package and not is_package_url(args.package):
             if not os.path.exists(os.path.expanduser(args.package)):
-                user_error(f"Package/directory '{args.package}' does not exist")
+                user_error("Package/directory '%s' does not exist" % args.package)
         if args.hub_package and not is_package_url(args.hub_package):
             if not os.path.isfile(args.hub_package):
-                user_error(f"Hub package '{args.hub_package}' does not exist")
+                user_error("Hub package '%s' does not exist" % args.hub_package)
         if args.client_package and not is_package_url(args.client_package):
             if not os.path.isfile(args.client_package):
-                user_error(f"Client package '{args.client_package}' does not exist")
+                user_error("Client package '%s' does not exist" % args.client_package)
 
     if command in ["sudo", "run"]:
         if len(args.remote_command) != 1:
@@ -269,7 +269,7 @@ def validate_command(command, args):
             if not masterfiles.endswith((".tgz", ".tar.gz")):
                 user_error("masterfiles URL must be to a gzipped tarball (.tgz or .tar.gz)")
         elif not os.path.exists(masterfiles):
-            user_error(f"'{masterfiles}' does not exist")
+            user_error("'%s' does not exist" % masterfiles)
 
 
 def is_in_cloud_state(name):

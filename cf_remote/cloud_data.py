@@ -82,11 +82,6 @@ aws_platforms = {
         "user": "ec2-user",
         "xlsize": "m3.xlarge"
     },
-    "coreos": {
-        "ami": "ami-067301c1a68e593f5",
-        "size": "t3a.nano",
-        "user": "core"
-    },
     'centos-5-x32':{
         'ami':'ami-fe11398a',
         'user':'root',

@@ -184,7 +184,9 @@ def install_package(host, pkg, data, *, connection=None):
     else:
         output = ssh_sudo(connection, "yum -y install {}".format(pkg), True)
     if output is None:
-        sys.exit("Installation failed on '{}'".format(host))
+        log.error("Installation failed on '{}'".format(host))
+
+    return output is not None
 
 
 @auto_connect
@@ -333,7 +335,11 @@ def install_host(
         scp(package, host, connection=connection)
         package = basename(package)
 
-    install_package(host, package, data, connection=connection)
+    success = install_package(host, package, data, connection=connection)
+    if not success:
+        # errors already logged
+        return 1
+
     data = get_info(host, connection=connection)
     if data["agent_version"] and len(data["agent_version"]) > 0:
         print(

@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import sys
+import re
 from os.path import basename
 from collections import OrderedDict
 
@@ -17,29 +18,64 @@ def powershell(cmd):
     #       in cmd
     return r'powershell.exe -Command "{}"'.format(cmd)
 
+
+def os_name_pretty(data):
+    id = None
+    redhat_release = data.get("redhat_release")
+    os_release = data.get("os_release")
+    if redhat_release:
+        id = redhat_release.split(" ")[0]
+    elif os_release:
+        id = os_release["ID"]
+
+    if id:
+        if id.lower() == "red" or id.lower() == "rhel":
+            return "RHEL"
+        if id.lower() == "centos":
+            return "CentOS"
+        if id.lower() == "sles" or id.lower() == "suse" or id.lower() == "opensuse":
+            return "SUSE"
+        return id.capitalize()
+
+    systeminfo = data.get("systeminfo")
+    if systeminfo:
+        return "Windows"
+
+    uname = data.get("uname")
+    if uname:
+        return uname
+
+    return "Unknown"
+
+
+def os_version_major(data):
+    redhat_release = data.get("redhat_release")
+    if redhat_release:
+        match = re.search(r"[1-9][0-9]*", redhat_release)
+        if match:
+            return match.group(0)
+
+    os_release = data.get("os_release")
+    if os_release and "VERSION_ID" in os_release:
+        return os_release["VERSION_ID"].split(".")[0]
+
+    systeminfo = data.get("systeminfo")
+    if systeminfo and "OS Name" in systeminfo:
+        match = re.search(r"[1-9][0-9]*", systeminfo["OS Name"])
+        if match:
+            return match.group(0)
+
+    return None
+
+
 def print_info(data):
     output = OrderedDict()
     print()
     print(data["ssh"])
-    os = like = None
-    if "os_release" in data:
-        os_release = data["os_release"]
-        if os_release:
-            if "ID" in os_release:
-                os = os_release["ID"]
-            if "ID_LIKE" in os_release:
-                like = os_release["ID_LIKE"]
-    elif "systeminfo" in data:
-        os = "Windows"
 
-    if not os:
-        os = data["uname"]
-    if os and like:
-        output["OS"] = "{} ({})".format(os, like)
-    elif os:
-        output["OS"] = "{}".format(os)
-    else:
-        output["OS"] = "Unknown"
+    os_name = os_name_pretty(data)
+    os_version = os_version_major(data)
+    output["OS"] = os_name + (" " + os_version if os_version else "")
 
     if "arch" in data:
         output["Architecture"] = data["arch"]
@@ -148,6 +184,7 @@ def get_info(host, *, users=None, connection=None):
         redhat_release_data = None
         if not os_release_data:
             redhat_release_data = ssh_cmd(connection, "cat /etc/redhat-release")
+            data["redhat_release"] = redhat_release_data
 
         data["package_tags"] = get_package_tags(os_release_data, redhat_release_data)
 

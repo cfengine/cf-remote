@@ -3,16 +3,37 @@ import sys
 import time
 from multiprocessing.dummy import Pool
 
-from cf_remote.remote import get_info, print_info, HostInstaller, uninstall_host, run_command, transfer_file, deploy_masterfiles
+from cf_remote.remote import (
+    get_info,
+    print_info,
+    HostInstaller,
+    uninstall_host,
+    run_command,
+    transfer_file,
+    deploy_masterfiles,
+)
 from cf_remote.packages import Releases
 from cf_remote.web import download_package
-from cf_remote.paths import cf_remote_dir, CLOUD_CONFIG_FPATH, CLOUD_STATE_FPATH, cf_remote_packages_dir
-from cf_remote.utils import save_file, strip_user, read_json, write_json, whoami, get_package_name
+from cf_remote.paths import (
+    cf_remote_dir,
+    CLOUD_CONFIG_FPATH,
+    CLOUD_STATE_FPATH,
+    cf_remote_packages_dir,
+)
+from cf_remote.utils import (
+    save_file,
+    strip_user,
+    read_json,
+    write_json,
+    whoami,
+    get_package_name,
+)
 from cf_remote.utils import user_error, is_package_url, print_progress_dot
 from cf_remote.spawn import VM, VMRequest, Providers, AWSCredentials, GCPCredentials
 from cf_remote.spawn import spawn_vms, destroy_vms, dump_vms_info, get_cloud_driver
 from cf_remote import log
 from cf_remote import cloud_data
+
 
 def info(hosts, users=None):
     assert hosts
@@ -120,6 +141,7 @@ def _verify_package_urls(urls):
 
     return verified_urls
 
+
 def _maybe_packages_in_folder(package):
     if not (package and type(package) is str):
         return package
@@ -128,20 +150,22 @@ def _maybe_packages_in_folder(package):
         return [os.path.join(folder, f) for f in os.listdir(folder)]
     return package
 
+
 def install(
-        hubs,
-        clients,
-        *,
-        bootstrap=None,
-        package=None,
-        hub_package=None,
-        client_package=None,
-        version=None,
-        demo=False,
-        call_collect=False,
-        edition=None,
-        remote_download=False,
-        trust_keys=None):
+    hubs,
+    clients,
+    *,
+    bootstrap=None,
+    package=None,
+    hub_package=None,
+    client_package=None,
+    version=None,
+    demo=False,
+    call_collect=False,
+    edition=None,
+    remote_download=False,
+    trust_keys=None
+):
     assert hubs or clients
     assert not (hubs and clients and package)
     assert (trust_keys is None) or hasattr(trust_keys, "__iter__")
@@ -168,27 +192,33 @@ def install(
     if bootstrap:
         if type(bootstrap) is str:
             bootstrap = [bootstrap]
-        save_file(os.path.join(cf_remote_dir(), "policy_server.dat"), "\n".join(bootstrap + [""]))
+        save_file(
+            os.path.join(cf_remote_dir(), "policy_server.dat"),
+            "\n".join(bootstrap + [""]),
+        )
 
     hub_jobs = []
     if hubs:
-        show_host_info = (len(hubs) == 1)
+        show_host_info = len(hubs) == 1
         if type(hubs) is str:
             hubs = [hubs]
         for index, hub in enumerate(hubs):
             log.debug("Installing {} hub package on '{}'".format(edition, hub))
-            hub_jobs.append(HostInstaller(
-                hub,
-                hub=True,
-                packages=hub_package,
-                bootstrap=bootstrap[index % len(bootstrap)] if bootstrap else None,
-                version=version,
-                demo=demo,
-                call_collect=call_collect,
-                edition=edition,
-                show_info=show_host_info,
-                remote_download=remote_download,
-                trust_keys=trust_keys))
+            hub_jobs.append(
+                HostInstaller(
+                    hub,
+                    hub=True,
+                    packages=hub_package,
+                    bootstrap=bootstrap[index % len(bootstrap)] if bootstrap else None,
+                    version=version,
+                    demo=demo,
+                    call_collect=call_collect,
+                    edition=edition,
+                    show_info=show_host_info,
+                    remote_download=remote_download,
+                    trust_keys=trust_keys,
+                )
+            )
 
     errors = 0
     if hub_jobs:
@@ -198,24 +228,30 @@ def install(
 
     if errors > 0:
         s = "s" if errors > 1 else ""
-        log.error("%s error%s encountered while installing hub packages, aborting..." % (errors, s))
+        log.error(
+            "%s error%s encountered while installing hub packages, aborting..."
+            % (errors, s)
+        )
         return errors
 
     client_jobs = []
-    show_host_info = (clients and (len(clients) == 1))
+    show_host_info = clients and (len(clients) == 1)
     for index, host in enumerate(clients or []):
         log.debug("Installing {} client package on '{}'".format(edition, host))
-        client_jobs.append(HostInstaller(
-            host,
-            hub=False,
-            packages=client_package,
-            bootstrap=bootstrap[index % len(bootstrap)] if bootstrap else None,
-            version=version,
-            demo=demo,
-            edition=edition,
-            show_info=show_host_info,
-            remote_download=remote_download,
-            trust_keys=trust_keys))
+        client_jobs.append(
+            HostInstaller(
+                host,
+                hub=False,
+                packages=client_package,
+                bootstrap=bootstrap[index % len(bootstrap)] if bootstrap else None,
+                version=version,
+                demo=demo,
+                edition=edition,
+                show_info=show_host_info,
+                remote_download=remote_download,
+                trust_keys=trust_keys,
+            )
+        )
 
     if client_jobs:
         with Pool(len(client_jobs)) as clients_install_pool:
@@ -225,14 +261,19 @@ def install(
     if demo and hubs:
         for hub in hubs:
             print(
-                "Your demo hub is ready: https://{}/ (Username: admin, Password: password)".
-                format(strip_user(hub)))
+                "Your demo hub is ready: https://{}/ (Username: admin, Password: password)".format(
+                    strip_user(hub)
+                )
+            )
 
     if errors > 0:
         s = "s" if errors > 1 else ""
-        log.error("%s error%s encountered while installing client packages" % (errors, s))
+        log.error(
+            "%s error%s encountered while installing client packages" % (errors, s)
+        )
 
     return errors
+
 
 def _iterate_over_packages(tags=None, version=None, edition=None, download=False):
     releases = Releases(edition)
@@ -254,23 +295,38 @@ def _iterate_over_packages(tags=None, version=None, edition=None, download=False
                 print(artifact.url)
     return 0
 
+
 # named list_command to not conflict with list()
 def list_command(tags=None, version=None, edition=None):
     return _iterate_over_packages(tags, version, edition, False)
 
+
 def download(tags=None, version=None, edition=None):
     return _iterate_over_packages(tags, version, edition, True)
 
+
 def _get_aws_creds_from_env():
-    if ("AWS_ACCESS_KEY_ID" in os.environ and
-        "AWS_SECRET_ACCESS_KEY" in os.environ):
-        return AWSCredentials(os.environ["AWS_ACCESS_KEY_ID"],
-                              os.environ["AWS_SECRET_ACCESS_KEY"],
-                              os.environ.get("AWS_SESSION_TOKEN", ""))
+    if "AWS_ACCESS_KEY_ID" in os.environ and "AWS_SECRET_ACCESS_KEY" in os.environ:
+        return AWSCredentials(
+            os.environ["AWS_ACCESS_KEY_ID"],
+            os.environ["AWS_SECRET_ACCESS_KEY"],
+            os.environ.get("AWS_SESSION_TOKEN", ""),
+        )
     return None
 
-def spawn(platform, count, role, group_name, provider=Providers.AWS, region=None,
-          size=None, network=None, public_ip=True, extend_group=False):
+
+def spawn(
+    platform,
+    count,
+    role,
+    group_name,
+    provider=Providers.AWS,
+    region=None,
+    size=None,
+    network=None,
+    public_ip=True,
+    extend_group=False,
+):
 
     if os.path.exists(CLOUD_CONFIG_FPATH):
         creds_data = read_json(CLOUD_CONFIG_FPATH)
@@ -294,23 +350,27 @@ def spawn(platform, count, role, group_name, provider=Providers.AWS, region=None
     key_pair = None
     if provider == Providers.AWS:
         try:
-            creds = _get_aws_creds_from_env() or AWSCredentials(creds_data["aws"]["key"],
-                                                                creds_data["aws"]["secret"],
-                                                                creds_data["aws"].get("token", ""))
+            creds = _get_aws_creds_from_env() or AWSCredentials(
+                creds_data["aws"]["key"],
+                creds_data["aws"]["secret"],
+                creds_data["aws"].get("token", ""),
+            )
             sec_groups = creds_data["aws"]["security_groups"]
             key_pair = creds_data["aws"]["key_pair"]
         except KeyError:
-            print("Incomplete AWS credential info") # TODO: report missing keys
+            print("Incomplete AWS credential info")  # TODO: report missing keys
             return 1
 
         region = region or creds_data["aws"].get("region", "eu-west-1")
     elif provider == Providers.GCP:
         try:
-            creds = GCPCredentials(creds_data["gcp"]["project_id"],
-                                   creds_data["gcp"]["service_account_id"],
-                                   creds_data["gcp"]["key_path"])
+            creds = GCPCredentials(
+                creds_data["gcp"]["project_id"],
+                creds_data["gcp"]["service_account_id"],
+                creds_data["gcp"]["key_path"],
+            )
         except KeyError:
-            print("Incomplete GCP credential info") # TODO: report missing keys
+            print("Incomplete GCP credential info")  # TODO: report missing keys
             return 1
 
         region = region or creds_data["gcp"].get("region", "europe-west1-b")
@@ -326,23 +386,27 @@ def spawn(platform, count, role, group_name, provider=Providers.AWS, region=None
     requests = []
     for i in range(range_start, range_start + count):
         vm_name = whoami()[0:2] + group_name + "-" + platform + role + str(i)
-        requests.append(VMRequest(platform=platform,
-                                  name=vm_name,
-                                  size=size,
-                                  public_ip=public_ip))
+        requests.append(
+            VMRequest(platform=platform, name=vm_name, size=size, public_ip=public_ip)
+        )
     print("Spawning VMs...", end="")
     sys.stdout.flush()
-    vms = spawn_vms(requests, creds, region, key_pair,
-                    security_groups=sec_groups,
-                    provider=provider,
-                    network=network,
-                    role=role,
-                    spawned_cb=print_progress_dot)
+    vms = spawn_vms(
+        requests,
+        creds,
+        region,
+        key_pair,
+        security_groups=sec_groups,
+        provider=provider,
+        network=network,
+        role=role,
+        spawned_cb=print_progress_dot,
+    )
     print("DONE")
 
     if public_ip and (not all(vm.public_ips for vm in vms)):
         print("Waiting for VMs to get IP addresses...", end="")
-        sys.stdout.flush()      # STDOUT is line-buffered
+        sys.stdout.flush()  # STDOUT is line-buffered
         while not all(vm.public_ips for vm in vms):
             time.sleep(1)
             print_progress_dot()
@@ -358,17 +422,22 @@ def spawn(platform, count, role, group_name, provider=Providers.AWS, region=None
 
     return 0
 
+
 def _is_saved_group(vms_info, group_name):
     group = vms_info[group_name]
-    return (group.get("meta", {}).get("saved") == True)
+    return group.get("meta", {}).get("saved") == True
+
 
 def _delete_saved_group(vms_info, group_name):
     print("Deleting saved group '{}' without terminating VMs:".format(group_name))
     for name, vm in vms_info[group_name].items():
         if name == "meta":
             continue
-        print("  {}: {}@{} ({})".format(name, vm["user"], vm["public_ips"][0], vm["role"]))
+        print(
+            "  {}: {}@{} ({})".format(name, vm["user"], vm["public_ips"][0], vm["role"])
+        )
     del vms_info[group_name]
+
 
 def destroy(group_name=None):
     if os.path.exists(CLOUD_CONFIG_FPATH):
@@ -379,9 +448,11 @@ def destroy(group_name=None):
     aws_creds = _get_aws_creds_from_env()
     if not aws_creds and creds_data:
         try:
-            aws_creds = AWSCredentials(creds_data["aws"]["key"],
-                                       creds_data["aws"]["secret"],
-                                       creds_data["aws"].get("token", ""))
+            aws_creds = AWSCredentials(
+                creds_data["aws"]["key"],
+                creds_data["aws"]["secret"],
+                creds_data["aws"].get("token", ""),
+            )
         except KeyError:
             # missing/incomplete AWS credentials, may not be needed, though
             pass
@@ -389,9 +460,11 @@ def destroy(group_name=None):
     gcp_creds = None
     if creds_data:
         try:
-            gcp_creds = GCPCredentials(creds_data["gcp"]["project_id"],
-                                       creds_data["gcp"]["service_account_id"],
-                                       creds_data["gcp"]["key_path"])
+            gcp_creds = GCPCredentials(
+                creds_data["gcp"]["project_id"],
+                creds_data["gcp"]["service_account_id"],
+                creds_data["gcp"]["key_path"],
+            )
         except KeyError:
             # missing/incomplete GCP credentials, may not be needed, though
             pass
@@ -410,7 +483,7 @@ def destroy(group_name=None):
             print("Group '%s' not found" % group_name)
             return 1
 
-        if (_is_saved_group(vms_info, group_name)):
+        if _is_saved_group(vms_info, group_name):
             _delete_saved_group(vms_info, group_name)
             write_json(CLOUD_STATE_FPATH, vms_info)
             return 0
@@ -444,7 +517,7 @@ def destroy(group_name=None):
     else:
         print("Destroying all hosts")
         for group_name in [key for key in vms_info.keys() if key.startswith("@")]:
-            if (_is_saved_group(vms_info, group_name)):
+            if _is_saved_group(vms_info, group_name):
                 _delete_saved_group(vms_info, group_name)
                 continue
 
@@ -477,11 +550,13 @@ def destroy(group_name=None):
     write_json(CLOUD_STATE_FPATH, vms_info)
     return 0
 
+
 def list_platforms():
     print("Available platforms:")
     for key in sorted(cloud_data.aws_platforms.keys()):
         print(key)
     return 0
+
 
 def init_cloud_config():
     if os.path.exists(CLOUD_CONFIG_FPATH):
@@ -503,7 +578,10 @@ def init_cloud_config():
         },
     }
     write_json(CLOUD_CONFIG_FPATH, empty_config)
-    print("Config file %s created, please complete the configuration in it." % CLOUD_CONFIG_FPATH)
+    print(
+        "Config file %s created, please complete the configuration in it."
+        % CLOUD_CONFIG_FPATH
+    )
     return 0
 
 
@@ -518,7 +596,9 @@ def save(name, hosts, role):
     for index, host in enumerate(hosts):
         split = host.split("@")
         if len(split) != 2:
-            print("Host '{}' not accepted, must be given as user@ip-address".format(host))
+            print(
+                "Host '{}' not accepted, must be given as user@ip-address".format(host)
+            )
             return 1
         user, ip = host.split("@")
         instance = {
@@ -544,8 +624,14 @@ def _ansible_inventory():
     for group_name in vms_info:
         print("[%s]" % group_name.strip("@"))
         for vm in (name for name in vms_info[group_name] if name != "meta"):
-            host_line = ('%s ansible_host=%s ansible_user=%s ansible_ssh_extra_args="-o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no"' %
-                         (vm, vms_info[group_name][vm]["public_ips"][0], vms_info[group_name][vm]["user"]))
+            host_line = (
+                '%s ansible_host=%s ansible_user=%s ansible_ssh_extra_args="-o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no"'
+                % (
+                    vm,
+                    vms_info[group_name][vm]["public_ips"][0],
+                    vms_info[group_name][vm]["user"],
+                )
+            )
             print(host_line)
             all_lines.append(host_line)
             if vms_info[group_name][vm]["role"] == "hub":
@@ -578,6 +664,7 @@ def _ansible_inventory():
 
     return 0
 
+
 def _flatten(items):
     flattened = []
     for item in items:
@@ -586,6 +673,7 @@ def _flatten(items):
         else:
             flattened.append(str(item))
     return flattened
+
 
 def _print_indented_and_wrapped(strings, indent, wrap):
     strings = _flatten(strings)
@@ -610,6 +698,7 @@ def _print_indented_and_wrapped(strings, indent, wrap):
     for line in lines:
         print(line)
 
+
 def show(ansible_inventory):
     if ansible_inventory:
         return _ansible_inventory()
@@ -631,19 +720,27 @@ def show(ansible_inventory):
             del group["meta"]
             if "region" in meta and "provider" in meta:
                 extra = " in {}, {}".format(meta["region"], meta["provider"])
-        print("{}: ({} host{}{})".format(group_name, len(group), "s" if len(group) > 1 else "", extra))
+        print(
+            "{}: ({} host{}{})".format(
+                group_name, len(group), "s" if len(group) > 1 else "", extra
+            )
+        )
         hosts += len(group)
         for name, vm in group.items():
             role = vm["role"]
-            keywords = [v for k,v in vm.items() if k not in ("user", "role")]
+            keywords = [v for k, v in vm.items() if k not in ("user", "role")]
             keywords = [role, name] + keywords
             identifier = "{}@{}".format(vm["user"], vm["public_ips"][0])
             print("  " + identifier)
             _print_indented_and_wrapped(keywords, 4, 80)
         print("\n")
-    print("Total: {} host{} in {} group{}".format(
-        hosts, "s" if hosts > 1 else "", groups, "s" if groups > 1 else ""))
+    print(
+        "Total: {} host{} in {} group{}".format(
+            hosts, "s" if hosts > 1 else "", groups, "s" if groups > 1 else ""
+        )
+    )
     return 0
+
 
 def uninstall(hosts):
     errors = 0
@@ -651,17 +748,21 @@ def uninstall(hosts):
         errors += uninstall_host(host)
     return errors
 
+
 def deploy_tarball(hubs, tarball):
     assert os.path.isfile(tarball)
 
     if not tarball.endswith((".tgz", ".tar.gz")):
-        log.error("The masterfiles directory must be in a gzipped tarball (.tgz or .tar.gz)")
+        log.error(
+            "The masterfiles directory must be in a gzipped tarball (.tgz or .tar.gz)"
+        )
         return 1
 
     errors = 0
     for hub in hubs:
         errors += deploy_masterfiles(hub, tarball)
     return errors
+
 
 def _get_hubs():
     if not os.path.exists(CLOUD_STATE_FPATH):
@@ -679,6 +780,7 @@ def _get_hubs():
                 hubs.append(identifier)
     return hubs
 
+
 def deploy(hubs, masterfiles):
     if not hubs:
         hubs = _get_hubs()
@@ -686,9 +788,15 @@ def deploy(hubs, masterfiles):
             print("Found saved/spawned hubs: " + ", ".join(hubs))
 
     if not hubs:
-        user_error("No hub to deploy to (Specify with --hub or use spawn/save commands to add to cf-remote)")
+        user_error(
+            "No hub to deploy to (Specify with --hub or use spawn/save commands to add to cf-remote)"
+        )
 
-    if not masterfiles and os.path.isfile("cfbs.json") and os.path.isfile("out/masterfiles.tgz"):
+    if (
+        not masterfiles
+        and os.path.isfile("cfbs.json")
+        and os.path.isfile("out/masterfiles.tgz")
+    ):
         masterfiles = "out/masterfiles.tgz"
         print("Found cfbs policy set: '{}'".format(masterfiles))
     elif masterfiles.startswith(("http://", "https://")):
@@ -728,22 +836,28 @@ def deploy(hubs, masterfiles):
     if os.path.isfile("%s/autogen.sh" % directory):
         os.system("bash -c 'cd %s && ./autogen.sh 1>/dev/null 2>&1'" % directory)
         if not os.path.isfile("%s/promises.cf" % directory):
-            log.error("The autogen.sh script did not produce promises.cf in '%s'" % directory)
+            log.error(
+                "The autogen.sh script did not produce promises.cf in '%s'" % directory
+            )
             return 1
     elif os.path.isfile("%s/configure" % directory):
         os.system("bash -c 'cd %s && ./configure 1>/dev/null 2>&1'" % directory)
         if not os.path.isfile("%s/promises.cf" % directory):
-            log.error("The configure script did not produce promises.cf in '%s'" % directory)
+            log.error(
+                "The configure script did not produce promises.cf in '%s'" % directory
+            )
             return 1
     else:
-        log.debug("No autogen.sh / configure found, assuming ready to install directory")
+        log.debug(
+            "No autogen.sh / configure found, assuming ready to install directory"
+        )
         if not os.path.isfile("%s/promises.cf" % directory):
             log.error("No promises.cf in '%s'" % directory)
             return 1
 
-    assert(not cf_remote_dir().endswith("/"))
+    assert not cf_remote_dir().endswith("/")
     tarball = cf_remote_dir() + "/masterfiles.tgz"
-    above = directory[0:-len("/masterfiles")]
+    above = directory[0 : -len("/masterfiles")]
     os.system("rm -rf %s" % tarball)
     os.system("tar -czf %s -C %s masterfiles" % (tarball, above))
     return deploy_tarball(hubs, tarball)

@@ -28,7 +28,14 @@ from collections import namedtuple
 import subprocess
 import time
 
-DEFAULT_SSH_ARGS = ["-oLogLevel=ERROR", "-oUserKnownHostsFile=/dev/null", "-oStrictHostKeyChecking=no", "-oBatchMode=yes", "-oHostKeyAlgorithms=+ssh-rsa",  "-oPubkeyAcceptedKeyTypes=+ssh-rsa"]
+DEFAULT_SSH_ARGS = [
+    "-oLogLevel=ERROR",
+    "-oUserKnownHostsFile=/dev/null",
+    "-oStrictHostKeyChecking=no",
+    "-oBatchMode=yes",
+    "-oHostKeyAlgorithms=+ssh-rsa",
+    "-oPubkeyAcceptedKeyTypes=+ssh-rsa",
+]
 """Default arguments to use with all SSH commands (incl. 'scp' and 'rsync')"""
 
 PRINT_OUT_FN = print
@@ -37,17 +44,24 @@ PRINT_OUT_FN = print
 # just a named constant
 _DEFAULT_SSH_PORT = 22
 
+
 class AramidError(Exception):
     """Base exception class for the aramid module"""
+
     pass
+
 
 class ExecutionError(AramidError):
     """Error when executing commands on remote hosts"""
+
     pass
+
 
 class PutError(AramidError):
     """Error when copying files to remote hosts"""
+
     pass
+
 
 class _TaskError(AramidError):
     pass
@@ -55,7 +69,8 @@ class _TaskError(AramidError):
 
 class PutMethod(Enum):
     """Method of copying files to remote hosts over SSH"""
-    SCP   = 1
+
+    SCP = 1
     RSYNC = 2
 
     @classmethod
@@ -73,21 +88,29 @@ def _get_put_method_args(method, host, src, dst):
     if method == PutMethod.SCP:
         if host.port != _DEFAULT_SSH_PORT:
             port_args += ["-P", str(host.port)]
-        return ["scp", "-r"] + DEFAULT_SSH_ARGS + port_args + [src, host.login + ":" + dst]
+        return (
+            ["scp", "-r"] + DEFAULT_SSH_ARGS + port_args + [src, host.login + ":" + dst]
+        )
     elif method == PutMethod.RSYNC:
         if host.port != _DEFAULT_SSH_PORT:
             port_args += ["-p", str(host.port)]
-        return (["rsync", "-a", "-e", "ssh " + " ".join(DEFAULT_SSH_ARGS + port_args + host.extra_ssh_args)] +
-                [src, host.login + ":" + dst])
+        return [
+            "rsync",
+            "-a",
+            "-e",
+            "ssh " + " ".join(DEFAULT_SSH_ARGS + port_args + host.extra_ssh_args),
+        ] + [src, host.login + ":" + dst]
     else:
         raise ValueError("Invalid or unsupported method '%s' given" % method)
 
 
-ExecutionResult = namedtuple("ExecutionResult", ["action", "retcode", "stdout", "stderr"])
+ExecutionResult = namedtuple(
+    "ExecutionResult", ["action", "retcode", "stdout", "stderr"]
+)
 
 
 class _Task:
-    def __init__(self, host, proc, action=None, retries=0): # TODO: timeout=60
+    def __init__(self, host, proc, action=None, retries=0):  # TODO: timeout=60
         self.host = host
         self.proc = proc
         self.action = action
@@ -106,13 +129,16 @@ class _Task:
         except Exception as e:
             raise _TaskError("Failed to communicate with the process") from e
         else:
-            if self.proc.returncode == 255: # SSH error
+            if self.proc.returncode == 255:  # SSH error
                 if self._retries > 0:
                     # wait for the rest of timeout (if any) and restart the process
                     time.sleep(max(timeout - (time.time() - start), 0))
-                    self.proc = subprocess.Popen(self.proc.args,
-                                                 stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                                                 universal_newlines=True)
+                    self.proc = subprocess.Popen(
+                        self.proc.args,
+                        stdout=subprocess.PIPE,
+                        stderr=subprocess.PIPE,
+                        universal_newlines=True,
+                    )
                     self._retries -= 1
                     return False
                 else:
@@ -121,7 +147,10 @@ class _Task:
                         return False
                     # else
                     if self._max_retries > 0:
-                        raise _TaskError("SSH failed on '%s' (%d attempts)" % (self.host.host_name, self._max_retries))
+                        raise _TaskError(
+                            "SSH failed on '%s' (%d attempts)"
+                            % (self.host.host_name, self._max_retries)
+                        )
                     else:
                         raise _TaskError("SSH failed on '%s'" % self.host.host_name)
             else:
@@ -130,7 +159,9 @@ class _Task:
                 self.stderr += err
                 return True
 
-    def print_output(self, max_host_name_length, echo_action=False, out_flag="", err_flag="err"):
+    def print_output(
+        self, max_host_name_length, echo_action=False, out_flag="", err_flag="err"
+    ):
         out_flag_str = ""
         err_flag_str = ""
         if out_flag:
@@ -152,7 +183,9 @@ class _Task:
             PRINT_OUT_FN("[{0}{1}]: {2}".format(host_name, err_flag_str, line))
 
     def get_result(self):
-        return ExecutionResult(self.action, self.proc.returncode, self.stdout, self.stderr)
+        return ExecutionResult(
+            self.action, self.proc.returncode, self.stdout, self.stderr
+        )
 
 
 class Host:
@@ -186,12 +219,14 @@ class Host:
 
     @property
     def host_name_port(self):
-        """"host_name:port" or just "host_name" if using standard port"""
+        """ "host_name:port" or just "host_name" if using standard port"""
         port_spec = (":%d" % self.port) if self.port != _DEFAULT_SSH_PORT else ""
         return self.host_name + port_spec
 
     def __str__(self):
-        return "Host(host_name='{0.host_name}', user='{0.user}', extra_ssh_args='{0.extra_ssh_args}')".format(self)
+        return "Host(host_name='{0.host_name}', user='{0.user}', extra_ssh_args='{0.extra_ssh_args}')".format(
+            self
+        )
 
 
 def _hosts_to_host_specs(hosts):
@@ -227,7 +262,15 @@ def _wait_for_tasks(hosts, tasks, ignore_failed, echo, echo_action, out_flag="")
     return ret
 
 
-def execute(hosts, command, command_args=None, retries=0, ignore_failed=False, echo=True, echo_cmd=False): # TODO: parallel=False
+def execute(
+    hosts,
+    command,
+    command_args=None,
+    retries=0,
+    ignore_failed=False,
+    echo=True,
+    echo_cmd=False,
+):  # TODO: parallel=False
     """Execute command on remote hosts (in parallel)
 
     :param hosts: an iterable of hosts
@@ -262,9 +305,16 @@ def execute(hosts, command, command_args=None, retries=0, ignore_failed=False, e
         port_args = []
         if host.port != _DEFAULT_SSH_PORT:
             port_args += ["-p", str(host.port)]
-        proc = subprocess.Popen(["ssh", host.login] + DEFAULT_SSH_ARGS + port_args + host.extra_ssh_args + [commands[i]],
-                                stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                                universal_newlines=True)
+        proc = subprocess.Popen(
+            ["ssh", host.login]
+            + DEFAULT_SSH_ARGS
+            + port_args
+            + host.extra_ssh_args
+            + [commands[i]],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            universal_newlines=True,
+        )
         task = _Task(host, proc, commands[i], retries=retries)
         host.tasks.append(task)
         tasks.append(task)
@@ -272,7 +322,15 @@ def execute(hosts, command, command_args=None, retries=0, ignore_failed=False, e
     return _wait_for_tasks(hosts, tasks, ignore_failed, echo, echo_cmd)
 
 
-def execute_commands(hosts, data, get_command_fn, retries=0, ignore_failed=False, echo=True, echo_cmd=True): # TODO: parallel=False
+def execute_commands(
+    hosts,
+    data,
+    get_command_fn,
+    retries=0,
+    ignore_failed=False,
+    echo=True,
+    echo_cmd=True,
+):  # TODO: parallel=False
     """A more flexible version of the :func:`execute` function
 
     For each host in :param:`hosts` the function :param:`get_command_fn` is
@@ -303,9 +361,16 @@ def execute_commands(hosts, data, get_command_fn, retries=0, ignore_failed=False
             port_args = []
             if host.port != _DEFAULT_SSH_PORT:
                 port_args += ["-p", str(host.port)]
-            proc = subprocess.Popen(["ssh", host.login] + DEFAULT_SSH_ARGS + port_args + host.extra_ssh_args + [command],
-                                    stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                                    universal_newlines=True)
+            proc = subprocess.Popen(
+                ["ssh", host.login]
+                + DEFAULT_SSH_ARGS
+                + port_args
+                + host.extra_ssh_args
+                + [command],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                universal_newlines=True,
+            )
             task = _Task(host, proc, command, retries=retries)
             host.tasks.append(task)
             tasks.append(task)
@@ -313,7 +378,9 @@ def execute_commands(hosts, data, get_command_fn, retries=0, ignore_failed=False
     return _wait_for_tasks(hosts, tasks, ignore_failed, echo, echo_cmd)
 
 
-def put(hosts, src, dst=None, method=PutMethod.SCP, ignore_failed=False, echo=True): # TODO: parallel=False
+def put(
+    hosts, src, dst=None, method=PutMethod.SCP, ignore_failed=False, echo=True
+):  # TODO: parallel=False
     """Copy files to remote hosts
 
     :param hosts: an iterable of hosts
@@ -344,16 +411,19 @@ def put(hosts, src, dst=None, method=PutMethod.SCP, ignore_failed=False, echo=Tr
     ...     print("Failed to copy /etc/hosts to hosts %s" % failed)
 
     """
-    dst = dst or src            # `dst` defaults to `src`
+    dst = dst or src  # `dst` defaults to `src`
     if isinstance(method, str):
         method = PutMethod.from_str(method)
 
     tasks = []
     hosts = _hosts_to_host_specs(hosts)
     for host in hosts:
-        proc = subprocess.Popen(_get_put_method_args(method, host, src, dst),
-                                stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                                universal_newlines=True)
+        proc = subprocess.Popen(
+            _get_put_method_args(method, host, src, dst),
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            universal_newlines=True,
+        )
         task = _Task(host, proc, action="{0} -> {1}".format(src, dst))
         host.tasks.append(task)
         tasks.append(task)
@@ -361,7 +431,9 @@ def put(hosts, src, dst=None, method=PutMethod.SCP, ignore_failed=False, echo=Tr
     return _wait_for_tasks(hosts, tasks, ignore_failed, echo, echo, out_flag="out")
 
 
-def put_to_hosts(hosts, data, get_src_dst_fn, method=PutMethod.SCP, ignore_failed=False, echo=True):
+def put_to_hosts(
+    hosts, data, get_src_dst_fn, method=PutMethod.SCP, ignore_failed=False, echo=True
+):
     """A more flexible version of the :func:`put` function
 
     For each host in :param:`hosts` the function :param:`get_src_dst_fn` is
@@ -385,9 +457,12 @@ def put_to_hosts(hosts, data, get_src_dst_fn, method=PutMethod.SCP, ignore_faile
         if src_dst is not None:
             src, dst = src_dst
             dst = dst or src  # `dst` defaults to `src`
-            proc = subprocess.Popen(_get_put_method_args(method, host, src, dst),
-                                    stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                                    universal_newlines=True)
+            proc = subprocess.Popen(
+                _get_put_method_args(method, host, src, dst),
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                universal_newlines=True,
+            )
             task = _Task(host, proc, action="{0} -> {1}".format(src, dst))
             host.tasks.append(task)
             tasks.append(task)

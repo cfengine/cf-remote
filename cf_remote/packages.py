@@ -32,8 +32,22 @@ class Artifact:
         self.add_tag(self.extension[1:])
 
         look_for_tags = [
-            "Windows", "CentOS", "Red Hat", "Debian", "Ubuntu", "SLES", "Solaris", "AIX", "HPUX",
-            "HP-UX", "nova", "community", "masterfiles", "OSX", "OS X", "OS-X"
+            "Windows",
+            "CentOS",
+            "Red Hat",
+            "Debian",
+            "Ubuntu",
+            "SLES",
+            "Solaris",
+            "AIX",
+            "HPUX",
+            "HP-UX",
+            "nova",
+            "community",
+            "masterfiles",
+            "OSX",
+            "OS X",
+            "OS-X",
         ]
         for tag in look_for_tags:
             tag = tag.lower()
@@ -67,7 +81,7 @@ class Artifact:
 
     def add_tags_from_filename(self, filename):
         parts = re.split(r"[-_.]", filename)
-        #parts = self.filename.split("-_.")
+        # parts = self.filename.split("-_.")
         for part in parts:
             part = part.strip()
             if part == "x86":
@@ -97,6 +111,7 @@ class Artifact:
     def __repr__(self):
         return str(self)
 
+
 def filter_artifacts(artifacts, tags, extension):
     if extension:
         artifacts = [a for a in artifacts if a.extension == extension]
@@ -112,6 +127,7 @@ def filter_artifacts(artifacts, tags, extension):
 
     log.debug("Found artifacts: {}".format(artifacts))
     return artifacts
+
 
 class Release:
     def __init__(self, data):
@@ -162,7 +178,9 @@ class Releases:
             if not is_in_past(expires):
                 self.supported_branches.append(branch["branch_name"])
             else:
-                log.info("LTS branch {} expired on {}".format(branch["branch_name"], expires))
+                log.info(
+                    "LTS branch {} expired on {}".format(branch["branch_name"], expires)
+                )
 
         self.releases = []
         for release in self.data["releases"]:
@@ -175,7 +193,10 @@ class Releases:
                 and ("latest_stable" not in release)
             ):
                 continue
-            if "lts_branch" in release and release["lts_branch"] not in self.supported_branches:
+            if (
+                "lts_branch" in release
+                and release["lts_branch"] not in self.supported_branches
+            ):
                 continue
             if "latestLTS" in release and release["latestLTS"] == True:
                 self.default = rel

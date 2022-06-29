@@ -1,9 +1,17 @@
 #!/usr/bin/env python3
 import sys
+import re
 from os.path import basename
 from collections import OrderedDict
 
-from cf_remote.utils import os_release, column_print, pretty, user_error, parse_systeminfo, parse_version
+from cf_remote.utils import (
+    os_release,
+    column_print,
+    pretty,
+    user_error,
+    parse_systeminfo,
+    parse_version,
+)
 from cf_remote.ssh import ssh_sudo, ssh_cmd, scp, auto_connect
 from cf_remote import log
 from cf_remote.web import download_package
@@ -11,35 +19,71 @@ from cf_remote.packages import Releases, Artifact, filter_artifacts
 
 import cf_remote.demo as demo_lib
 
+
 def powershell(cmd):
-    assert '"' not in cmd # TODO: How to escape in cmd / powershell
+    assert '"' not in cmd  # TODO: How to escape in cmd / powershell
     # Note: Have to use double quotes, because single quotes are different
     #       in cmd
     return r'powershell.exe -Command "{}"'.format(cmd)
+
+
+def os_name_pretty(data):
+    id = None
+    redhat_release = data.get("redhat_release")
+    os_release = data.get("os_release")
+    if redhat_release:
+        id = redhat_release.split(" ")[0]
+    elif os_release:
+        id = os_release["ID"]
+
+    if id:
+        if id.lower() == "red" or id.lower() == "rhel":
+            return "RHEL"
+        if id.lower() == "centos":
+            return "CentOS"
+        if id.lower() == "sles" or id.lower() == "suse" or id.lower() == "opensuse":
+            return "SUSE"
+        return id.capitalize()
+
+    systeminfo = data.get("systeminfo")
+    if systeminfo:
+        return "Windows"
+
+    uname = data.get("uname")
+    if uname:
+        return uname
+
+    return "Unknown"
+
+
+def os_version_major(data):
+    redhat_release = data.get("redhat_release")
+    if redhat_release:
+        match = re.search(r"[1-9][0-9]*", redhat_release)
+        if match:
+            return match.group(0)
+
+    os_release = data.get("os_release")
+    if os_release and "VERSION_ID" in os_release:
+        return os_release["VERSION_ID"].split(".")[0]
+
+    systeminfo = data.get("systeminfo")
+    if systeminfo and "OS Name" in systeminfo:
+        match = re.search(r"[1-9][0-9]*", systeminfo["OS Name"])
+        if match:
+            return match.group(0)
+
+    return None
+
 
 def print_info(data):
     output = OrderedDict()
     print()
     print(data["ssh"])
-    os = like = None
-    if "os_release" in data:
-        os_release = data["os_release"]
-        if os_release:
-            if "ID" in os_release:
-                os = os_release["ID"]
-            if "ID_LIKE" in os_release:
-                like = os_release["ID_LIKE"]
-    elif "systeminfo" in data:
-        os = "Windows"
 
-    if not os:
-        os = data["uname"]
-    if os and like:
-        output["OS"] = "{} ({})".format(os, like)
-    elif os:
-        output["OS"] = "{}".format(os)
-    else:
-        output["OS"] = "Unknown"
+    os_name = os_name_pretty(data)
+    os_version = os_version_major(data)
+    output["OS"] = os_name + (" " + os_version if os_version else "")
 
     if "arch" in data:
         output["Architecture"] = data["arch"]
@@ -85,12 +129,12 @@ def get_package_tags(os_release=None, redhat_release=None):
         platform_tag = distro + major
 
         # Add tags with version number first, to filter by them first:
-        tags.append(platform_tag) # Example: ubuntu16
+        tags.append(platform_tag)  # Example: ubuntu16
         if distro == "centos" or distro == "rhel":
             tags.append("el" + major)
 
         # Then add more generic tags (lower priority):
-        tags.append(distro) # Example: ubuntu
+        tags.append(distro)  # Example: ubuntu
         if distro == "centos":
             tags.append("rhel")
 
@@ -136,7 +180,7 @@ def get_info(host, *, users=None, connection=None):
         data["arch"] = "x86_64"
         agent = r"& 'C:\Program Files\Cfengine\bin\cf-agent.exe'"
         data["agent"] = agent
-        version_cmd = powershell('{} -V'.format(agent))
+        version_cmd = powershell("{} -V".format(agent))
         data["agent_version"] = parse_version(ssh_cmd(connection, version_cmd))
     else:
         data["os"] = "unix"
@@ -148,15 +192,20 @@ def get_info(host, *, users=None, connection=None):
         redhat_release_data = None
         if not os_release_data:
             redhat_release_data = ssh_cmd(connection, "cat /etc/redhat-release")
+            data["redhat_release"] = redhat_release_data
 
         data["package_tags"] = get_package_tags(os_release_data, redhat_release_data)
 
         data["agent_location"] = ssh_cmd(connection, "which cf-agent")
-        data["policy_server"] = ssh_cmd(connection, "cat /var/cfengine/policy_server.dat")
+        data["policy_server"] = ssh_cmd(
+            connection, "cat /var/cfengine/policy_server.dat"
+        )
 
-        agent = r'/var/cfengine/bin/cf-agent'
+        agent = r"/var/cfengine/bin/cf-agent"
         data["agent"] = agent
-        data["agent_version"] = parse_version(ssh_cmd(connection, "{} --version".format(agent)))
+        data["agent_version"] = parse_version(
+            ssh_cmd(connection, "{} --version".format(agent))
+        )
 
         data["bin"] = {}
         for bin in ["dpkg", "rpm", "yum", "apt", "pkg"]:
@@ -180,7 +229,7 @@ def install_package(host, pkg, data, *, connection=None):
         # Windows 2012 Server, 2016, and so on...
         # sleep is powershell specific,
         # timeout doesn't work over ssh.
-        output = ssh_cmd(connection, powershell(r'.\{} ; sleep 10'.format(pkg)), True)
+        output = ssh_cmd(connection, powershell(r".\{} ; sleep 10".format(pkg)), True)
     else:
         output = ssh_sudo(connection, "yum -y install {}".format(pkg), True)
     if output is None:
@@ -194,18 +243,47 @@ def uninstall_cfengine(host, data, *, connection=None):
     print("Uninstalling CFEngine on '{}'".format(host))
 
     if "dpkg" in data["bin"]:
-        run_command(host, "dpkg --remove cfengine-community || true", connection=connection, sudo=True)
-        run_command(host, "dpkg --remove cfengine-nova || true", connection=connection, sudo=True)
-        run_command(host, "dpkg --remove cfengine-nova-hub || true", connection=connection, sudo=True)
+        run_command(
+            host,
+            "dpkg --remove cfengine-community || true",
+            connection=connection,
+            sudo=True,
+        )
+        run_command(
+            host,
+            "dpkg --remove cfengine-nova || true",
+            connection=connection,
+            sudo=True,
+        )
+        run_command(
+            host,
+            "dpkg --remove cfengine-nova-hub || true",
+            connection=connection,
+            sudo=True,
+        )
     elif "rpm" in data["bin"]:
-        run_command(host, "rpm --erase cfengine-community || true", connection=connection, sudo=True)
-        run_command(host, "rpm --erase cfengine-nova || true", connection=connection, sudo=True)
-        run_command(host, "rpm --erase cfengine-nova-hub || true", connection=connection, sudo=True)
+        run_command(
+            host,
+            "rpm --erase cfengine-community || true",
+            connection=connection,
+            sudo=True,
+        )
+        run_command(
+            host, "rpm --erase cfengine-nova || true", connection=connection, sudo=True
+        )
+        run_command(
+            host,
+            "rpm --erase cfengine-nova-hub || true",
+            connection=connection,
+            sudo=True,
+        )
     else:
         user_error("I don't know how to uninstall there!")
 
     run_command(host, "pkill -U cfapache || true", connection=connection, sudo=True)
-    run_command(host, "rm -rf /var/cfengine /opt/cfengine", connection=connection, sudo=True)
+    run_command(
+        host, "rm -rf /var/cfengine /opt/cfengine", connection=connection, sudo=True
+    )
 
 
 @auto_connect
@@ -230,10 +308,12 @@ def bootstrap_host(host_data, policy_server, *, connection=None, trust_server=Tr
         log.error("Something went wrong while bootstrapping")
         return False
 
+
 def _package_from_list(tags, extension, packages):
     artifacts = [Artifact(None, p) for p in packages]
     artifact = filter_artifacts(artifacts, tags, extension)[-1]
     return artifact.url
+
 
 def _package_from_releases(tags, extension, version, edition, remote_download):
     releases = Releases(edition)
@@ -244,15 +324,20 @@ def _package_from_releases(tags, extension, version, edition, remote_download):
     release.init_download()
 
     if not release.artifacts:
-        log.error("The {} {} release is empty, visit tracker.mender.io to file a bug report".format(
-            version, edition))
+        log.error(
+            "The {} {} release is empty, visit tracker.mender.io to file a bug report".format(
+                version, edition
+            )
+        )
         return None
 
     artifacts = release.find(tags, extension)
     if not artifacts:
         log.error(
             "Could not find an appropriate package for host, please use --{}-package".format(
-                "hub" if "hub" in tags else "client"))
+                "hub" if "hub" in tags else "client"
+            )
+        )
         return None
     artifact = artifacts[-1]
     if remote_download:
@@ -261,9 +346,16 @@ def _package_from_releases(tags, extension, version, edition, remote_download):
         return download_package(artifact.url)
 
 
-def get_package_from_host_info(package_tags, pkg_binary, arch, version=None,
-                               hub=False, edition="enterprise", packages=None,
-                               remote_download=False):
+def get_package_from_host_info(
+    package_tags,
+    pkg_binary,
+    arch,
+    version=None,
+    hub=False,
+    edition="enterprise",
+    packages=None,
+    remote_download=False,
+):
     tags = []
     if edition == "enterprise":
         tags.append("hub" if hub else "agent")
@@ -283,28 +375,32 @@ def get_package_from_host_info(package_tags, pkg_binary, arch, version=None,
     if package_tags is not None:
         tags.extend(tag for tag in package_tags if tag != "msi")
 
-    if packages is None: # No commandd line argument given
-        package = _package_from_releases(tags, extension, version, edition, remote_download)
+    if packages is None:  # No commandd line argument given
+        package = _package_from_releases(
+            tags, extension, version, edition, remote_download
+        )
     else:
         package = _package_from_list(tags, extension, packages)
 
     return package
 
+
 @auto_connect
 def install_host(
-        host,
-        *,
-        hub=False,
-        packages=None,
-        bootstrap=None,
-        version=None,
-        demo=False,
-        call_collect=False,
-        connection=None,
-        edition=None,
-        show_info=True,
-        remote_download=False,
-        trust_keys=None):
+    host,
+    *,
+    hub=False,
+    packages=None,
+    bootstrap=None,
+    version=None,
+    demo=False,
+    call_collect=False,
+    connection=None,
+    edition=None,
+    show_info=True,
+    remote_download=False,
+    trust_keys=None
+):
 
     data = get_info(host, connection=connection)
     if show_info:
@@ -317,9 +413,16 @@ def install_host(
         package = packages[0]
 
     if not package:
-        package = get_package_from_host_info(data.get("package_tags"), data.get("bin"),
-                                             data.get("arch"), version, hub, edition, packages,
-                                             remote_download)
+        package = get_package_from_host_info(
+            data.get("package_tags"),
+            data.get("bin"),
+            data.get("arch"),
+            version,
+            hub,
+            edition,
+            packages,
+            remote_download,
+        )
 
     if not package:
         log.error("Installation failed - no package found!")
@@ -327,11 +430,13 @@ def install_host(
 
     if remote_download:
         print("Downloading '%s' on '%s' using curl" % (package, host))
-        r = ssh_cmd(cmd="curl --fail -O {}".format(package), connection=connection, errors=True)
+        r = ssh_cmd(
+            cmd="curl --fail -O {}".format(package), connection=connection, errors=True
+        )
         if r is None:
             return 1
         package = basename(package)
-    elif not getattr(connection, 'is_local', False):
+    elif not getattr(connection, "is_local", False):
         scp(package, host, connection=connection)
         package = basename(package)
 
@@ -343,8 +448,10 @@ def install_host(
     data = get_info(host, connection=connection)
     if data["agent_version"] and len(data["agent_version"]) > 0:
         print(
-            "CFEngine {} was successfully installed on '{}'".format(data["agent_version"],
-                                                                    host))
+            "CFEngine {} was successfully installed on '{}'".format(
+                data["agent_version"], host
+            )
+        )
     else:
         log.error("Installation failed!")
         return 1
@@ -352,18 +459,27 @@ def install_host(
     if trust_keys:
         for key in trust_keys:
             scp(key, host, connection=connection)
-            run_command(host, "mv %s /var/cfengine/ppkeys/" % basename(key),
-                        connection=connection, sudo=True)
+            run_command(
+                host,
+                "mv %s /var/cfengine/ppkeys/" % basename(key),
+                connection=connection,
+                sudo=True,
+            )
 
     if bootstrap:
-        ret = bootstrap_host(data, policy_server=bootstrap,
-                             connection=connection,
-                             trust_server=(not trust_keys))
+        ret = bootstrap_host(
+            data,
+            policy_server=bootstrap,
+            connection=connection,
+            trust_server=(not trust_keys),
+        )
         if not ret:
             return 1
     if demo:
         if hub:
-            demo_lib.install_def_json(host, connection=connection, call_collect=call_collect)
+            demo_lib.install_def_json(
+                host, connection=connection, call_collect=call_collect
+            )
             demo_lib.agent_run(data, connection=connection)
             demo_lib.disable_password_dialog(host)
         demo_lib.agent_run(data, connection=connection)
@@ -390,7 +506,11 @@ def uninstall_host(host, *, connection=None):
     print_info(data)
 
     if not data["agent_version"]:
-        log.warning("CFEngine does not seem to be installed on '{}' - attempting uninstall anyway".format(host))
+        log.warning(
+            "CFEngine does not seem to be installed on '{}' - attempting uninstall anyway".format(
+                host
+            )
+        )
 
     uninstall_cfengine(host, data, connection=connection)
     data = get_info(host, connection=connection)
@@ -404,6 +524,7 @@ def uninstall_host(host, *, connection=None):
     print("Uninstallation successful on '{}'".format(host))
     return 0
 
+
 @auto_connect
 def deploy_masterfiles(host, tarball, *, connection=None):
     data = get_info(host, connection=connection)
@@ -413,7 +534,7 @@ def deploy_masterfiles(host, tarball, *, connection=None):
         log.error("Cannot deploy masterfiles on %s - CFEngine not installed" % host)
         return 1
 
-    if not getattr(connection, 'is_local', False):
+    if not getattr(connection, "is_local", False):
         scp(tarball, host, connection=connection, rename="masterfiles.tgz")
         tarball = "masterfiles.tgz"
     ssh_cmd(connection, "tar -xzf %s" % tarball)

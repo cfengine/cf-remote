@@ -153,7 +153,7 @@ def ssh_cmd(connection, cmd, errors=False):
 def ssh_sudo(connection, cmd, errors=False):
     assert connection
 
-    log.debug("Running(sudo) over SSH: '%s'" %cmd)
+    log.debug("Running(sudo) over SSH: '%s'" % cmd)
     escaped = cmd.replace('"', r"\"")
     sudo_cmd = 'sudo bash -c "%s"' % escaped
     result = connection.run(sudo_cmd, hide=True)

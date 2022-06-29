@@ -33,13 +33,25 @@ class Providers(Enum):
     def __str__(self):
         return self.name.lower()
 
+
 class MissingInfoError(ValueError):
     pass
 
+
 class VM:
-    def __init__(self, name, driver, node, role=None,
-                 platform=None, size=None, key_pair=None, security_groups=None, user=None,
-                 provider=None):
+    def __init__(
+        self,
+        name,
+        driver,
+        node,
+        role=None,
+        platform=None,
+        size=None,
+        key_pair=None,
+        security_groups=None,
+        user=None,
+        provider=None,
+    ):
         self._name = name
         self._driver = driver
         self._node = node
@@ -62,7 +74,9 @@ class VM:
 
         nodes = nodes or driver.list_nodes()
         for node in nodes:
-            if node.state in (0, 'running') and (ip in node.public_ips or ip in node.private_ips):
+            if node.state in (0, "running") and (
+                ip in node.public_ips or ip in node.private_ips
+            ):
                 return cls(node.name, driver, node)
         return None
 
@@ -77,7 +91,7 @@ class VM:
 
         nodes = nodes or driver.list_nodes()
         for node in nodes:
-            if node.state in (0, 'running') and node.name == name:
+            if node.state in (0, "running") and node.name == name:
                 return cls(node.name, driver, node)
         return None
 
@@ -96,17 +110,31 @@ class VM:
                 return cls(node.name, driver, node)
         return None
 
-
     @classmethod
     def get_by_info(cls, driver, vm_info, nodes=None):
         nodes = nodes or driver.list_nodes()
         for node in nodes:
-            if (("name" in vm_info and vm_info["name"] == node.name) or
-                ("public_ips" in vm_info and set(vm_info["public_ips"]).intersection(set(node.public_ips))) or
-                ("private_ips" in vm_info and set(vm_info["private_ips"]).intersection(set(node.private_ips)))):
-                return cls(node.name, driver, node, role=vm_info.get("role"),
-                           platform=vm_info.get("platform"), size=vm_info.get("size"),
-                           key_pair=vm_info.get("key_pair"), security_groups=vm_info.get("security_groups"))
+            if (
+                ("name" in vm_info and vm_info["name"] == node.name)
+                or (
+                    "public_ips" in vm_info
+                    and set(vm_info["public_ips"]).intersection(set(node.public_ips))
+                )
+                or (
+                    "private_ips" in vm_info
+                    and set(vm_info["private_ips"]).intersection(set(node.private_ips))
+                )
+            ):
+                return cls(
+                    node.name,
+                    driver,
+                    node,
+                    role=vm_info.get("role"),
+                    platform=vm_info.get("platform"),
+                    size=vm_info.get("size"),
+                    key_pair=vm_info.get("key_pair"),
+                    security_groups=vm_info.get("security_groups"),
+                )
         return None
 
     @property
@@ -231,10 +259,12 @@ class VM:
 
 
 def _get_unused_name(used_names, prefix, random_suffix_length):
-    random_part = ''.join(random.sample(string.ascii_lowercase, random_suffix_length))
+    random_part = "".join(random.sample(string.ascii_lowercase, random_suffix_length))
     name = "%s-%s" % (prefix, random_part)
     while name in used_names:
-        random_part = ''.join(random.sample(string.ascii_lowercase, random_suffix_length))
+        random_part = "".join(
+            random.sample(string.ascii_lowercase, random_suffix_length)
+        )
         name = "%s-%s" % (prefix, random_part)
 
     return name
@@ -256,7 +286,9 @@ def get_cloud_driver(provider, creds, region):
         driver.region = region
     elif provider == Providers.GCP:
         GCP = get_driver(Provider.GCE)
-        driver = GCP(creds.SA_ID, creds.key_path, project=creds.project_ID, datacenter=region)
+        driver = GCP(
+            creds.SA_ID, creds.key_path, project=creds.project_ID, datacenter=region
+        )
     else:
         raise ValueError("Unknown provider: %s" % provider)
 
@@ -265,14 +297,25 @@ def get_cloud_driver(provider, creds, region):
     return driver
 
 
-def spawn_vm_in_aws(platform, aws_creds, key_pair, security_groups, region, name=None, size=None, role=None):
+def spawn_vm_in_aws(
+    platform,
+    aws_creds,
+    key_pair,
+    security_groups,
+    region,
+    name=None,
+    size=None,
+    role=None,
+):
     driver = get_cloud_driver(Providers.AWS, aws_creds, region)
     existing_vms = driver.list_nodes()
 
     if name is None:
-        name = _get_unused_name([vm.name for vm in existing_vms], platform, _NAME_RANDOM_PART_LENGTH)
+        name = _get_unused_name(
+            [vm.name for vm in existing_vms], platform, _NAME_RANDOM_PART_LENGTH
+        )
     else:
-        if any(vm.state in (0, 'running') and vm.name == name for vm in existing_vms):
+        if any(vm.state in (0, "running") and vm.name == name for vm in existing_vms):
             raise ValueError("VM with the name '%s' already exists" % name)
 
     aws_platform = aws_platforms[platform]
@@ -284,8 +327,15 @@ def spawn_vm_in_aws(platform, aws_creds, key_pair, security_groups, region, name
     node = driver.create_node(
         name=name,
         image=NodeImage(id=ami, name=None, driver=driver),
-        size=NodeSize(id=size, name=None, ram=None,
-		      disk=None, bandwidth=None, price=None, driver=driver),
+        size=NodeSize(
+            id=size,
+            name=None,
+            ram=None,
+            disk=None,
+            bandwidth=None,
+            price=None,
+            driver=driver,
+        ),
         ex_keyname=key_pair,
         ex_security_groups=security_groups,
         ex_metadata={
@@ -294,17 +344,39 @@ def spawn_vm_in_aws(platform, aws_creds, key_pair, security_groups, region, name
         },
     )
 
-    return VM(name, driver, node, role, platform, size, key_pair, security_groups, user, Providers.AWS)
+    return VM(
+        name,
+        driver,
+        node,
+        role,
+        platform,
+        size,
+        key_pair,
+        security_groups,
+        user,
+        Providers.AWS,
+    )
 
 
-def spawn_vm_in_gcp(platform, gcp_creds, region, name=None, size="n1-standard-1", network=None, public_ip=True, role=None):
+def spawn_vm_in_gcp(
+    platform,
+    gcp_creds,
+    region,
+    name=None,
+    size="n1-standard-1",
+    network=None,
+    public_ip=True,
+    role=None,
+):
     driver = get_cloud_driver(Providers.GCP, gcp_creds, region)
     existing_vms = driver.list_nodes()
 
     if name is None:
-        name = _get_unused_name([vm.name for vm in existing_vms], platform, _NAME_RANDOM_PART_LENGTH)
+        name = _get_unused_name(
+            [vm.name for vm in existing_vms], platform, _NAME_RANDOM_PART_LENGTH
+        )
     else:
-        if any(vm.state in (0, 'running') and vm.name == name for vm in existing_vms):
+        if any(vm.state in (0, "running") and vm.name == name for vm in existing_vms):
             raise ValueError("VM with the name '%s' already exists" % name)
 
     # TODO: Should we have a list of GCP platforms/images? No weird IDs needed,
@@ -352,9 +424,18 @@ class GCPSpawnTask:
         return self._errors
 
 
-def spawn_vms(vm_requests, creds, region, key_pair=None, security_groups=None,
-              provider=Providers.AWS, size=None, network=None,
-              role=None, spawned_cb=None):
+def spawn_vms(
+    vm_requests,
+    creds,
+    region,
+    key_pair=None,
+    security_groups=None,
+    provider=Providers.AWS,
+    size=None,
+    network=None,
+    role=None,
+    spawned_cb=None,
+):
     if provider not in (Providers.AWS, Providers.GCP):
         raise ValueError("Unsupported provider %s" % provider)
 
@@ -366,16 +447,34 @@ def spawn_vms(vm_requests, creds, region, key_pair=None, security_groups=None,
     ret = []
     if provider == Providers.AWS:
         for req in vm_requests:
-            vm = spawn_vm_in_aws(req.platform, creds, key_pair, security_groups,
-                                 region, req.name, req.size, role)
+            vm = spawn_vm_in_aws(
+                req.platform,
+                creds,
+                key_pair,
+                security_groups,
+                region,
+                req.name,
+                req.size,
+                role,
+            )
             if spawned_cb is not None:
                 spawned_cb(vm)
             ret.append(vm)
     else:
-        tasks = [GCPSpawnTask(spawned_cb, req.platform, creds, region,
-                              req.name, req.size, network, req.public_ip,
-                              role)
-                 for req in vm_requests]
+        tasks = [
+            GCPSpawnTask(
+                spawned_cb,
+                req.platform,
+                creds,
+                region,
+                req.name,
+                req.size,
+                network,
+                req.public_ip,
+                role,
+            )
+            for req in vm_requests
+        ]
         with Pool(len(vm_requests)) as pool:
             pool.map(lambda x: x.run(), tasks)
         for task in tasks:
@@ -396,13 +495,10 @@ def destroy_vms(vms):
 
 
 def dump_vms_info(vms):
-    ret = {
-        "meta": {
-        }
-    }
+    ret = {"meta": {}}
     duplicate_info_keys = []
     providers = {vm.provider for vm in vms}
-    if (len(providers) == 1):
+    if len(providers) == 1:
         ret["meta"]["provider"] = str(next(iter(providers)))
         duplicate_info_keys.append("provider")
 

@@ -5,7 +5,12 @@ import sys
 from cf_remote import log
 from cf_remote import version
 from cf_remote import commands, paths
-from cf_remote.utils import user_error, exit_success, expand_list_from_file, is_file_string
+from cf_remote.utils import (
+    user_error,
+    exit_success,
+    expand_list_from_file,
+    is_file_string,
+)
 from cf_remote.utils import strip_user, read_json, is_package_url, cache
 from cf_remote.packages import Releases
 from cf_remote.spawn import Providers
@@ -17,39 +22,85 @@ def print_version_info():
     releases = Releases()
     print(releases)
 
+
 @cache
 def _get_arg_parser():
     ap = argparse.ArgumentParser(
         description="Spooky CFEngine at a distance",
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
 
-    ap.add_argument("--log-level", help="Specify level of logging: DEBUG, INFO, WARNING, ERROR, or CRITICAL", type=str, default="WARNING")
     ap.add_argument(
-        "--version", "-V", help="Print or specify version", nargs="?", type=str, const=True)
+        "--log-level",
+        help="Specify level of logging: DEBUG, INFO, WARNING, ERROR, or CRITICAL",
+        type=str,
+        default="WARNING",
+    )
+    ap.add_argument(
+        "--version",
+        "-V",
+        help="Print or specify version",
+        nargs="?",
+        type=str,
+        const=True,
+    )
 
-    command_help_hint = "Commands (use %s COMMAND --help to get more info)" % os.path.basename(sys.argv[0])
-    subp = ap.add_subparsers(dest="command",
-                             title=command_help_hint)
+    command_help_hint = (
+        "Commands (use %s COMMAND --help to get more info)"
+        % os.path.basename(sys.argv[0])
+    )
+    subp = ap.add_subparsers(dest="command", title=command_help_hint)
 
     sp = subp.add_parser("info", help="Get info about the given hosts")
-    sp.add_argument("--hosts", "-H", help="Which hosts to get info for", type=str, required=True)
+    sp.add_argument(
+        "--hosts", "-H", help="Which hosts to get info for", type=str, required=True
+    )
 
     sp = subp.add_parser("install", help="Install CFEngine on the given hosts")
-    sp.add_argument("--edition", "-E", choices=["community", "enterprise"],
-                    help="Enterprise or community packages", type=str)
-    sp.add_argument("--package", help="Local path to package or URL to download", type=str)
-    sp.add_argument("--hub-package", help="Local path to package or URL to download for --hub", type=str)
-    sp.add_argument("--client-package", help="Local path to package or URL to download for --clients", type=str)
+    sp.add_argument(
+        "--edition",
+        "-E",
+        choices=["community", "enterprise"],
+        help="Enterprise or community packages",
+        type=str,
+    )
+    sp.add_argument(
+        "--package", help="Local path to package or URL to download", type=str
+    )
+    sp.add_argument(
+        "--hub-package",
+        help="Local path to package or URL to download for --hub",
+        type=str,
+    )
+    sp.add_argument(
+        "--client-package",
+        help="Local path to package or URL to download for --clients",
+        type=str,
+    )
     sp.add_argument("--bootstrap", "-B", help="cf-agent --bootstrap argument", type=str)
     sp.add_argument("--clients", "-c", help="Where to install client package", type=str)
     sp.add_argument("--hub", help="Where to install hub package", type=str)
     sp.add_argument(
-        "--demo", help="Use defaults to make demos smoother (NOT secure)", action='store_true')
+        "--demo",
+        help="Use defaults to make demos smoother (NOT secure)",
+        action="store_true",
+    )
     sp.add_argument(
-        "--call-collect", help="Enable call collect in --demo def.json", action='store_true')
-    sp.add_argument("--remote-download", help="Package will be downloaded directly to the target machine", action="store_true")
-    sp.add_argument("--trust-keys", help="Comma-separated list of paths to keys hosts should trust" +
-                    " (implies '--trust-server no' when boostraping)", type=str)
+        "--call-collect",
+        help="Enable call collect in --demo def.json",
+        action="store_true",
+    )
+    sp.add_argument(
+        "--remote-download",
+        help="Package will be downloaded directly to the target machine",
+        action="store_true",
+    )
+    sp.add_argument(
+        "--trust-keys",
+        help="Comma-separated list of paths to keys hosts should trust"
+        + " (implies '--trust-server no' when boostraping)",
+        type=str,
+    )
 
     sp = subp.add_parser("uninstall", help="Install CFEngine on the given hosts")
     sp.add_argument("--clients", "-c", help="Where to uninstall", type=str)
@@ -57,71 +108,162 @@ def _get_arg_parser():
     sp.add_argument("--hosts", "-H", help="Where to uninstall", type=str)
 
     sp = subp.add_parser("packages", help="Get info about available packages")
-    sp.add_argument("--edition", "-E", choices=["community", "enterprise"],
-                    help="Enterprise or community packages", type=str)
+    sp.add_argument(
+        "--edition",
+        "-E",
+        choices=["community", "enterprise"],
+        help="Enterprise or community packages",
+        type=str,
+    )
     sp.add_argument("tags", metavar="TAG", nargs="*")
 
     sp = subp.add_parser("list", help="List CFEngine packages available for download")
-    sp.add_argument("--edition", "-E", choices=["community", "enterprise"],
-                    help="Enterprise or community packages", type=str)
+    sp.add_argument(
+        "--edition",
+        "-E",
+        choices=["community", "enterprise"],
+        help="Enterprise or community packages",
+        type=str,
+    )
     sp.add_argument("tags", metavar="TAG", nargs="*")
 
     sp = subp.add_parser("download", help="Download CFEngine packages")
-    sp.add_argument("--edition", "-E", choices=["community", "enterprise"],
-                    help="Enterprise or community packages", type=str)
+    sp.add_argument(
+        "--edition",
+        "-E",
+        choices=["community", "enterprise"],
+        help="Enterprise or community packages",
+        type=str,
+    )
     sp.add_argument("tags", metavar="TAG", nargs="*")
 
-    sp = subp.add_parser("run", help="Run the command given as arguments on the given hosts")
-    sp.add_argument("--hosts", "-H", help="Which hosts to run the command on", type=str, required=True)
-    sp.add_argument("--raw", help="Print only output of command itself", action='store_true')
-    sp.add_argument("remote_command", help="Command to execute on remote host (including args)", type=str, nargs=1)
+    sp = subp.add_parser(
+        "run", help="Run the command given as arguments on the given hosts"
+    )
+    sp.add_argument(
+        "--hosts",
+        "-H",
+        help="Which hosts to run the command on",
+        type=str,
+        required=True,
+    )
+    sp.add_argument(
+        "--raw", help="Print only output of command itself", action="store_true"
+    )
+    sp.add_argument(
+        "remote_command",
+        help="Command to execute on remote host (including args)",
+        type=str,
+        nargs=1,
+    )
 
-    sp = subp.add_parser("save", help="Save host(s) with a group name to use in other commands")
-    sp.add_argument("--role", help="Role of the hosts", choices=["hub", "hubs", "client", "clients"], required=True)
-    sp.add_argument("--name", help="Name of the group of hosts (can be used in other commands)", required=True)
-    sp.add_argument("--hosts", "-H", help="SSH usernames and IPs for SSH and CFEngine in the form of user@ip", required=True)
+    sp = subp.add_parser(
+        "save", help="Save host(s) with a group name to use in other commands"
+    )
+    sp.add_argument(
+        "--role",
+        help="Role of the hosts",
+        choices=["hub", "hubs", "client", "clients"],
+        required=True,
+    )
+    sp.add_argument(
+        "--name",
+        help="Name of the group of hosts (can be used in other commands)",
+        required=True,
+    )
+    sp.add_argument(
+        "--hosts",
+        "-H",
+        help="SSH usernames and IPs for SSH and CFEngine in the form of user@ip",
+        required=True,
+    )
 
-    sp = subp.add_parser("sudo",
-                         help="Run the command given as arguments on the given hosts with 'sudo'")
-    sp.add_argument("--hosts", "-H", help="Which hosts to run the command on", type=str, required=True)
-    sp.add_argument("--raw", help="Print only output of command itself", action='store_true')
-    sp.add_argument("remote_command", help="Command to execute on remote host (including args)", type=str, nargs=1)
+    sp = subp.add_parser(
+        "sudo", help="Run the command given as arguments on the given hosts with 'sudo'"
+    )
+    sp.add_argument(
+        "--hosts",
+        "-H",
+        help="Which hosts to run the command on",
+        type=str,
+        required=True,
+    )
+    sp.add_argument(
+        "--raw", help="Print only output of command itself", action="store_true"
+    )
+    sp.add_argument(
+        "remote_command",
+        help="Command to execute on remote host (including args)",
+        type=str,
+        nargs=1,
+    )
 
     sp = subp.add_parser("scp", help="Copy the given file to the given hosts")
-    sp.add_argument("--hosts", "-H", help="Which hosts to copy the file to", type=str, required=True)
-    sp.add_argument("args", help="Arguments", type=str, nargs='*')
+    sp.add_argument(
+        "--hosts", "-H", help="Which hosts to copy the file to", type=str, required=True
+    )
+    sp.add_argument("args", help="Arguments", type=str, nargs="*")
 
     sp = subp.add_parser("spawn", help="Spawn hosts in the clouds")
-    sp.add_argument("--list-platforms", help="List supported platforms", action='store_true')
-    sp.add_argument("--init-config", help="Initialize configuration file for spawn functionality",
-                    action='store_true')
+    sp.add_argument(
+        "--list-platforms", help="List supported platforms", action="store_true"
+    )
+    sp.add_argument(
+        "--init-config",
+        help="Initialize configuration file for spawn functionality",
+        action="store_true",
+    )
     sp.add_argument("--platform", help="Platform to use", type=str)
     sp.add_argument("--count", help="How many hosts to spawn", type=int)
-    sp.add_argument("--role", help="Role of the hosts", choices=["hub", "hubs", "client", "clients"])
-    sp.add_argument("--name", help="Name of the group of hosts (can be used in other commands)")
-    sp.add_argument("--append", help="Append the new VMs to a pre-existing group", action='store_true')
-    sp.add_argument("--aws", help="Spawn VMs in AWS (default)", action='store_true')
-    sp.add_argument("--gcp", help="Spawn VMs in GCP", action='store_true')
+    sp.add_argument(
+        "--role", help="Role of the hosts", choices=["hub", "hubs", "client", "clients"]
+    )
+    sp.add_argument(
+        "--name", help="Name of the group of hosts (can be used in other commands)"
+    )
+    sp.add_argument(
+        "--append",
+        help="Append the new VMs to a pre-existing group",
+        action="store_true",
+    )
+    sp.add_argument("--aws", help="Spawn VMs in AWS (default)", action="store_true")
+    sp.add_argument("--gcp", help="Spawn VMs in GCP", action="store_true")
     sp.add_argument("--size", help="Size/type of the instances", type=str)
-    sp.add_argument("--network", help="network/subnet to assign the VMs to (GCP only)", type=str)
-    sp.add_argument("--no-public-ip",
-                    help="No public IP needed (GCP only; WARNING: The VMs will only be accessible" +
-                         " from some other VM in the same cloud/network!)",
-                    action="store_true")
+    sp.add_argument(
+        "--network", help="network/subnet to assign the VMs to (GCP only)", type=str
+    )
+    sp.add_argument(
+        "--no-public-ip",
+        help="No public IP needed (GCP only; WARNING: The VMs will only be accessible"
+        + " from some other VM in the same cloud/network!)",
+        action="store_true",
+    )
     # TODO: --region (optional)
 
     sp = subp.add_parser("show", help="Show hosts spawned by or added to cf-remote")
-    sp = sp.add_argument("--ansible-inventory", help="Print Ansible inventory with spawned hosts", action='store_true')
+    sp = sp.add_argument(
+        "--ansible-inventory",
+        help="Print Ansible inventory with spawned hosts",
+        action="store_true",
+    )
 
     dp = subp.add_parser("destroy", help="Destroy hosts spawned in the clouds")
-    dp.add_argument("--all", help="Destroy all hosts spawned in the clouds", action='store_true')
-    dp.add_argument("name", help="Name fo the group of hosts to destroy", nargs='?')
+    dp.add_argument(
+        "--all", help="Destroy all hosts spawned in the clouds", action="store_true"
+    )
+    dp.add_argument("name", help="Name fo the group of hosts to destroy", nargs="?")
 
     sp = subp.add_parser("deploy", help="Deploy policy-set (masterfiles) to hub")
     sp.add_argument("--hub", help="Hub(s) to deploy to", type=str)
-    sp.add_argument("masterfiles", help="Policy-set location (tarball URL or local path to tarball / directory)", type=str, nargs="?")
+    sp.add_argument(
+        "masterfiles",
+        help="Policy-set location (tarball URL or local path to tarball / directory)",
+        type=str,
+        nargs="?",
+    )
 
     return ap
+
 
 def get_args():
     ap = _get_arg_parser()
@@ -150,23 +292,34 @@ def run_command_with_args(command, args):
             call_collect=args.call_collect,
             edition=args.edition,
             remote_download=args.remote_download,
-            trust_keys=trust_keys)
+            trust_keys=trust_keys,
+        )
     elif command == "uninstall":
-        all_hosts = ((args.hosts or []) + (args.hub or []) + (args.clients or []))
+        all_hosts = (args.hosts or []) + (args.hub or []) + (args.clients or [])
         return commands.uninstall(all_hosts)
     elif command == "packages":
-        log.warning("packages command is deprecated, please use the new command: download")
-        return commands.download(tags=args.tags, version=args.version, edition=args.edition)
+        log.warning(
+            "packages command is deprecated, please use the new command: download"
+        )
+        return commands.download(
+            tags=args.tags, version=args.version, edition=args.edition
+        )
     elif command == "list":
-        return commands.list_command(tags=args.tags, version=args.version, edition=args.edition)
+        return commands.list_command(
+            tags=args.tags, version=args.version, edition=args.edition
+        )
     elif command == "download":
-        return commands.download(tags=args.tags, version=args.version, edition=args.edition)
+        return commands.download(
+            tags=args.tags, version=args.version, edition=args.edition
+        )
     elif command == "run":
         return commands.run(hosts=args.hosts, raw=args.raw, command=args.remote_command)
     elif command == "save":
         return commands.save(hosts=args.hosts, role=args.role, name=args.name)
     elif command == "sudo":
-        return commands.sudo(hosts=args.hosts, raw=args.raw, command=args.remote_command)
+        return commands.sudo(
+            hosts=args.hosts, raw=args.raw, command=args.remote_command
+        )
     elif command == "scp":
         return commands.scp(hosts=args.hosts, files=args.args)
     elif command == "spawn":
@@ -191,11 +344,21 @@ def run_command_with_args(command, args):
             if args.no_public_ip:
                 user_error("--no-public-ip not supported for AWS")
         if args.network and (args.network.count("/") != 1):
-            user_error("Invalid network specified, needs to be in the network/subnet format")
+            user_error(
+                "Invalid network specified, needs to be in the network/subnet format"
+            )
 
-        return commands.spawn(args.platform, args.count, args.role, args.name,
-                              provider=provider, size=args.size, network=args.network,
-                              public_ip=not args.no_public_ip, extend_group=args.append)
+        return commands.spawn(
+            args.platform,
+            args.count,
+            args.role,
+            args.name,
+            provider=provider,
+            size=args.size,
+            network=args.network,
+            public_ip=not args.no_public_ip,
+            extend_group=args.append,
+        )
     elif command == "show":
         return commands.show(args.ansible_inventory)
     elif command == "destroy":
@@ -228,10 +391,12 @@ def validate_command(command, args):
             user_error("Specify hosts using --hub and --clients")
         if args.hub and args.clients and args.package:
             user_error(
-                "Use --hub-package / --client-package instead to distinguish between hosts")
+                "Use --hub-package / --client-package instead to distinguish between hosts"
+            )
         if args.package and (args.hub_package or args.client_package):
             user_error(
-                "--package cannot be used in combination with --hub-package / --client-package")
+                "--package cannot be used in combination with --hub-package / --client-package"
+            )
         if args.package and not is_package_url(args.package):
             if not os.path.exists(os.path.expanduser(args.package)):
                 user_error("Package/directory '%s' does not exist" % args.package)
@@ -247,7 +412,7 @@ def validate_command(command, args):
             user_error("cf-remote sude/run requires exactly 1 command (use quotes)")
         args.remote_command = args.remote_command[0]
 
-    if (command == "spawn" and not args.list_platforms and not args.init_config):
+    if command == "spawn" and not args.list_platforms and not args.init_config:
         # The above options don't require any other options/arguments (TODO:
         # --provider), but otherwise all have to be given
         if not args.platform:
@@ -267,7 +432,9 @@ def validate_command(command, args):
         masterfiles = args.masterfiles
         if masterfiles.startswith(("http://", "https://")):
             if not masterfiles.endswith((".tgz", ".tar.gz")):
-                user_error("masterfiles URL must be to a gzipped tarball (.tgz or .tar.gz)")
+                user_error(
+                    "masterfiles URL must be to a gzipped tarball (.tgz or .tar.gz)"
+                )
         elif not os.path.exists(masterfiles):
             user_error("'%s' does not exist" % masterfiles)
 
@@ -329,7 +496,7 @@ def get_cloud_hosts(name, bootstrap_ips=False):
         ips = host.get(key, [])
         if len(ips) > 0:
             if host.get("user"):
-                ret.append('{}@{}'.format(host.get("user"), ips[0]))
+                ret.append("{}@{}".format(host.get("user"), ips[0]))
             else:
                 ret.append(ips[0])
         else:
@@ -378,7 +545,8 @@ def validate_args(args):
         args.clients = resolve_hosts(args.clients)
     if "bootstrap" in args and args.bootstrap:
         args.bootstrap = [
-            strip_user(host_info) for host_info in resolve_hosts(args.bootstrap, bootstrap_ips=True)
+            strip_user(host_info)
+            for host_info in resolve_hosts(args.bootstrap, bootstrap_ips=True)
         ]
     if "hub" in args and args.hub:
         args.hub = resolve_hosts(args.hub)
@@ -397,7 +565,7 @@ def main():
     validate_args(args)
 
     exit_code = run_command_with_args(args.command, args)
-    assert(type(exit_code) is int)
+    assert type(exit_code) is int
     sys.exit(exit_code)
 
 

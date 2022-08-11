@@ -378,7 +378,7 @@ def get_package_from_host_info(
     if package_tags is not None:
         tags.extend(tag for tag in package_tags if tag != "msi")
 
-    if packages is None:  # No commandd line argument given
+    if packages is None:  # No command line argument given
         package = _package_from_releases(
             tags, extension, version, edition, remote_download
         )

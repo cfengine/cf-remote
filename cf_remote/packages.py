@@ -141,12 +141,13 @@ class Release:
         self.version = data["version"]
         self.url = data["URL"]
         self.lts = data["lts_branch"] if "lts_branch" in data else None
-        self.extended_data = None
+        self.extended_data = data["data"] if "data" in data else None
         self.artifacts = None
         self.default = False
 
     def init_download(self):
-        self.extended_data = get_json(self.url)
+        if self.extended_data is None:
+            self.extended_data = get_json(self.url)
         artifacts = self.extended_data["artifacts"]
         self.artifacts = []
         for header in artifacts:
@@ -156,7 +157,7 @@ class Release:
                 self.artifacts.append(artifact)
 
     def find(self, tags, extension=None):
-        if not self.extended_data:
+        if self.extended_data is None:
             self.init_download()
         return filter_artifacts(self.artifacts, tags, extension)
 

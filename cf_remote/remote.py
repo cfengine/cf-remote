@@ -361,7 +361,9 @@ def get_package_from_host_info(
     if edition == "enterprise":
         tags.append("hub" if hub else "agent")
 
-    tags.append("64" if arch in ("x86_64", "amd64") else arch)
+    tags.append("64" if arch in ("x86_64", "amd64", "aarch64") else arch)
+    if arch == "aarch64":
+        tags.append("arm64")
     if arch in ("i386", "i486", "i586", "i686"):
         tags.append("32")
 

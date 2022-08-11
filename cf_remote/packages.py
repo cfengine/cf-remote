@@ -86,7 +86,7 @@ class Artifact:
             part = part.strip()
             if part == "x86":
                 continue
-            if part == "amd64" or part == "x86_64":
+            if part == "amd64" or part == "x86_64" or part == "arm64":
                 self.add_tag("64")
             try:
                 _ = int(part)
@@ -103,6 +103,9 @@ class Artifact:
             self.add_tag("64")
         if "amd64" in parts:
             self.add_tag("amd64")
+            self.add_tag("64")
+        if "arm64" in parts:
+            self.add_tag("aarch64")
             self.add_tag("64")
         log.debug(
             "After looking at filename {}, tags for this package are {}".format(
@@ -129,7 +132,9 @@ def filter_artifacts(artifacts, tags, extension):
         # since we are overwriting artifacts
         if len(new_artifacts) > 0:
             artifacts = new_artifacts
-        log.debug("Artifacts filtered on canonified tag {} are {}".format(tag, new_artifacts))
+        log.debug(
+            "Artifacts filtered on canonified tag {} are {}".format(tag, new_artifacts)
+        )
 
     log.debug("Found artifacts: {}".format(artifacts))
     return artifacts

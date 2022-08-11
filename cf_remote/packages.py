@@ -104,6 +104,11 @@ class Artifact:
         if "amd64" in parts:
             self.add_tag("amd64")
             self.add_tag("64")
+        log.debug(
+            "After looking at filename {}, tags for this package are {}".format(
+                filename, self.tags
+            )
+        )
 
     def __str__(self):
         return self.filename + " ({})".format(" ".join(self.tags))
@@ -115,7 +120,7 @@ class Artifact:
 def filter_artifacts(artifacts, tags, extension):
     if extension:
         artifacts = [a for a in artifacts if a.extension == extension]
-    log.debug("Looking for tags: {}".format(tags))
+    log.debug("Looking for host tags: {}".format(tags))
     log.debug("In artifacts: {}".format(artifacts))
     for tag in tags or []:
         tag = canonify(tag)
@@ -124,6 +129,7 @@ def filter_artifacts(artifacts, tags, extension):
         # since we are overwriting artifacts
         if len(new_artifacts) > 0:
             artifacts = new_artifacts
+        log.debug("Artifacts filtered on canonified tag {} are {}".format(tag, new_artifacts))
 
     log.debug("Found artifacts: {}".format(artifacts))
     return artifacts

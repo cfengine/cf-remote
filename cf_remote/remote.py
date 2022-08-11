@@ -316,6 +316,7 @@ def _package_from_list(tags, extension, packages):
 
 
 def _package_from_releases(tags, extension, version, edition, remote_download):
+    log.debug("Looking for a package from releases based on host tags: {}".format(tags))
     releases = Releases(edition)
     release = releases.default
     if version:

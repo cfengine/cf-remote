@@ -283,6 +283,7 @@ def _iterate_over_packages(tags=None, version=None, edition=None, download=False
     if version:
         release = releases.pick_version(version)
     print("Using {}:".format(release))
+    log.debug("Looking for a release based on host tags: {}".format(tags))
     artifacts = release.find(tags)
 
     if len(artifacts) == 0:

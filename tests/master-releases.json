@@ -32,6 +32,15 @@
                 "package": "PACKAGES_HUB_x86_64_linux_debian_11"
             }, 
             {
+                "Title": "Debian 11", 
+                "Arch": "aarch64", 
+                "classexpr": "am_policy_hub.debian_11.aarch64", 
+                "Published": true, 
+                "URL": "http://buildcache.cfengine.com/packages/testing-pr/jenkins-master-nightly-pipeline-1069/PACKAGES_HUB_arm_64_linux_debian_11/cfengine-nova-hub_3.21.0a.138df3742~21749.debian11_arm64.deb", 
+                "SHA256": "9ef8889b5671791b1bb5bff5d38482fd39274d28a834eaf6e806c50aa0c35833", 
+                "package": "PACKAGES_HUB_arm_64_linux_debian_11"
+            }, 
+            {
                 "Title": "Red Hat / CentOS 7", 
                 "Arch": "x86_64", 
                 "classexpr": "am_policy_hub.(redhat_7|centos_7).64_bit", 
@@ -113,6 +122,15 @@
                 "URL": "http://buildcache.cfengine.com/packages/testing-pr/jenkins-master-nightly-pipeline-1069/PACKAGES_x86_64_linux_debian_11/cfengine-nova_3.21.0a.138df3742~21749.debian11_amd64.deb", 
                 "SHA256": "fb88167fb3d8abc28fcead39738e2817be9e82c568dd39827beacdef0f095742", 
                 "package": "PACKAGES_x86_64_linux_debian_11"
+            }, 
+            {
+                "Title": "Debian 11", 
+                "Arch": "aarch64", 
+                "classexpr": "!am_policy_hub.debian_11.aarch64", 
+                "Published": true, 
+                "URL": "http://buildcache.cfengine.com/packages/testing-pr/jenkins-master-nightly-pipeline-1069/PACKAGES_arm_64_linux_debian_11/cfengine-nova_3.21.0a.138df3742~21749.debian11_arm64.deb", 
+                "SHA256": "fb88167fb3d8abc28fcead39738e2817be9e82c568dd39827beacdef0f095742", 
+                "package": "PACKAGES_arm_64_linux_debian_11"
             }, 
             {
                 "Title": "Ubuntu 16.04", 

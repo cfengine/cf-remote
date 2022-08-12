@@ -97,6 +97,31 @@ class Artifact:
         else:
             self.add_tag("client")
             self.add_tag("agent")
+
+        # sorry, debian packages work great on ubuntu
+        # if we don't have a specific ubuntu package, note which debian is equivalent
+        # only add "ubuntu" tag if we know we have an equivalent debian :)
+        if "debian11" in self.tags:
+            self.add_tag("ubuntu20")
+            self.add_tag("ubuntu")
+        if "debian10" in self.tags:
+            self.add_tag("ubuntu19")
+            self.add_tag("ubuntu18")
+            self.add_tag("ubuntu")
+        if "debian9" in self.tags:
+            self.add_tag("ubuntu17")
+            self.add_tag("ubuntu16")
+            self.add_tag("ubuntu")
+        if "debian8" in self.tags:
+            self.add_tag("ubuntu15")
+            self.add_tag("ubuntu14")
+            self.add_tag("ubuntu")
+        if "debian7" in self.tags:
+            self.add_tag("ubuntu13")
+            self.add_tag("ubuntu12")
+            self.add_tag("ubuntu11")
+            self.add_tag("ubuntu")
+
         parts = filename.split(".")
         if "x86_64" in parts:
             self.add_tag("x86_64")

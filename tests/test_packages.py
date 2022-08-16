@@ -2,15 +2,14 @@ import json
 from collections import OrderedDict
 
 from cf_remote.packages import Release
+from cf_remote.utils import read_json
 from cf_remote import log
 
 # log.set_level("debug")
 
 
 def test_release():
-    with open("tests/master-releases.json") as file:
-        data = file.read()
-    json_data = json.loads(data, object_pairs_hook=OrderedDict)
+    json_data = read_json("tests/master-releases.json")
     data = {
         "URL": "test-release-url",
         "version": "master",

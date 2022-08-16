@@ -86,7 +86,7 @@ class Artifact:
             part = part.strip()
             if part == "x86":
                 continue
-            if part == "amd64" or part == "x86_64":
+            if part == "amd64" or part == "x86_64" or part == "arm64":
                 self.add_tag("64")
             try:
                 _ = int(part)
@@ -97,6 +97,31 @@ class Artifact:
         else:
             self.add_tag("client")
             self.add_tag("agent")
+
+        # sorry, debian packages work great on ubuntu
+        # if we don't have a specific ubuntu package, note which debian is equivalent
+        # only add "ubuntu" tag if we know we have an equivalent debian :)
+        if "debian11" in self.tags:
+            self.add_tag("ubuntu20")
+            self.add_tag("ubuntu")
+        if "debian10" in self.tags:
+            self.add_tag("ubuntu19")
+            self.add_tag("ubuntu18")
+            self.add_tag("ubuntu")
+        if "debian9" in self.tags:
+            self.add_tag("ubuntu17")
+            self.add_tag("ubuntu16")
+            self.add_tag("ubuntu")
+        if "debian8" in self.tags:
+            self.add_tag("ubuntu15")
+            self.add_tag("ubuntu14")
+            self.add_tag("ubuntu")
+        if "debian7" in self.tags:
+            self.add_tag("ubuntu13")
+            self.add_tag("ubuntu12")
+            self.add_tag("ubuntu11")
+            self.add_tag("ubuntu")
+
         parts = filename.split(".")
         if "x86_64" in parts:
             self.add_tag("x86_64")
@@ -104,6 +129,14 @@ class Artifact:
         if "amd64" in parts:
             self.add_tag("amd64")
             self.add_tag("64")
+        if "arm64" in parts:
+            self.add_tag("aarch64")
+            self.add_tag("64")
+        log.debug(
+            "After looking at filename {}, tags for this package are {}".format(
+                filename, self.tags
+            )
+        )
 
     def __str__(self):
         return self.filename + " ({})".format(" ".join(self.tags))
@@ -115,7 +148,7 @@ class Artifact:
 def filter_artifacts(artifacts, tags, extension):
     if extension:
         artifacts = [a for a in artifacts if a.extension == extension]
-    log.debug("Looking for tags: {}".format(tags))
+    log.debug("Looking for host tags: {}".format(tags))
     log.debug("In artifacts: {}".format(artifacts))
     for tag in tags or []:
         tag = canonify(tag)
@@ -124,6 +157,9 @@ def filter_artifacts(artifacts, tags, extension):
         # since we are overwriting artifacts
         if len(new_artifacts) > 0:
             artifacts = new_artifacts
+        log.debug(
+            "Artifacts filtered on canonified tag {} are {}".format(tag, new_artifacts)
+        )
 
     log.debug("Found artifacts: {}".format(artifacts))
     return artifacts
@@ -135,12 +171,13 @@ class Release:
         self.version = data["version"]
         self.url = data["URL"]
         self.lts = data["lts_branch"] if "lts_branch" in data else None
-        self.extended_data = None
+        self.extended_data = data["data"] if "data" in data else None
         self.artifacts = None
         self.default = False
 
     def init_download(self):
-        self.extended_data = get_json(self.url)
+        if self.extended_data is None:
+            self.extended_data = get_json(self.url)
         artifacts = self.extended_data["artifacts"]
         self.artifacts = []
         for header in artifacts:
@@ -150,7 +187,7 @@ class Release:
                 self.artifacts.append(artifact)
 
     def find(self, tags, extension=None):
-        if not self.extended_data:
+        if self.extended_data is None:
             self.init_download()
         return filter_artifacts(self.artifacts, tags, extension)
 

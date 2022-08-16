@@ -2,7 +2,7 @@ import os
 import fcntl
 import urllib.request
 import requests
-from cf_remote.utils import write_json, mkdir
+from cf_remote.utils import write_json, mkdir, parse_json
 from cf_remote import log
 from cf_remote.paths import cf_remote_dir, cf_remote_packages_dir
 
@@ -10,7 +10,7 @@ from cf_remote.paths import cf_remote_dir, cf_remote_packages_dir
 def get_json(url):
     r = requests.get(url)
     assert r.status_code >= 200 and r.status_code < 300
-    data = r.json()
+    data = parse_json(r.text)
 
     filename = os.path.basename(url)
     dir = cf_remote_dir("json")

@@ -316,6 +316,7 @@ def _package_from_list(tags, extension, packages):
 
 
 def _package_from_releases(tags, extension, version, edition, remote_download):
+    log.debug("Looking for a package from releases based on host tags: {}".format(tags))
     releases = Releases(edition)
     release = releases.default
     if version:
@@ -360,7 +361,9 @@ def get_package_from_host_info(
     if edition == "enterprise":
         tags.append("hub" if hub else "agent")
 
-    tags.append("64" if arch in ("x86_64", "amd64") else arch)
+    tags.append("64" if arch in ("x86_64", "amd64", "aarch64") else arch)
+    if arch == "aarch64":
+        tags.append("arm64")
     if arch in ("i386", "i486", "i586", "i686"):
         tags.append("32")
 
@@ -375,7 +378,7 @@ def get_package_from_host_info(
     if package_tags is not None:
         tags.extend(tag for tag in package_tags if tag != "msi")
 
-    if packages is None:  # No commandd line argument given
+    if packages is None:  # No command line argument given
         package = _package_from_releases(
             tags, extension, version, edition, remote_download
         )

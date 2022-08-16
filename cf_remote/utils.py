@@ -89,10 +89,14 @@ def get_package_name(url):
     return url.rsplit("/", 1)[-1]
 
 
+def parse_json(text):
+    return json.loads(text, object_pairs_hook=OrderedDict)
+
+
 def read_json(path):
     try:
         with open(path, "r") as f:
-            return json.loads(f.read(), object_pairs_hook=OrderedDict)
+            return parse_json(f.read())
     except FileNotFoundError:
         return None
 

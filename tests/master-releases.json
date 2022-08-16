@@ -1,0 +1,291 @@
+{
+    "project": "enterprise", 
+    "version": "master non-LTS (unsupported)", 
+    "note": "Please note that <a href=\"/supported-versions/\">non-LTS releases are unsupported</a>, i.e. excluded from CFEngine Enterprise support contract, and we do not recommend installing them in production.", 
+    "artifacts": {
+        "Policy Server": [
+            {
+                "Title": "Debian 9", 
+                "Arch": "x86_64", 
+                "classexpr": "am_policy_hub.debian_9.64_bit", 
+                "Published": true, 
+                "URL": "http://buildcache.cfengine.com/packages/testing-pr/jenkins-master-nightly-pipeline-1069/PACKAGES_HUB_x86_64_linux_debian_9/cfengine-nova-hub_3.21.0a.138df3742~21749.debian9_amd64.deb", 
+                "SHA256": "3db4501857078281891ab39e4dfcb53d39240abef6ab23aea9eeaf241fa7cabe", 
+                "package": "PACKAGES_HUB_x86_64_linux_debian_9"
+            }, 
+            {
+                "Title": "Debian 10", 
+                "Arch": "x86_64", 
+                "classexpr": "am_policy_hub.debian_10.64_bit", 
+                "Published": true, 
+                "URL": "http://buildcache.cfengine.com/packages/testing-pr/jenkins-master-nightly-pipeline-1069/PACKAGES_HUB_x86_64_linux_debian_10/cfengine-nova-hub_3.21.0a.138df3742~21749.debian10_amd64.deb", 
+                "SHA256": "c2d3f110443e0f08c6ef8ea91052395fa741c718953caba33e681f62a8fa9868", 
+                "package": "PACKAGES_HUB_x86_64_linux_debian_10"
+            }, 
+            {
+                "Title": "Debian 11", 
+                "Arch": "x86_64", 
+                "classexpr": "am_policy_hub.debian_11.64_bit", 
+                "Published": true, 
+                "URL": "http://buildcache.cfengine.com/packages/testing-pr/jenkins-master-nightly-pipeline-1069/PACKAGES_HUB_x86_64_linux_debian_11/cfengine-nova-hub_3.21.0a.138df3742~21749.debian11_amd64.deb", 
+                "SHA256": "9ef8889b5671791b1bb5bff5d38482fd39274d28a834eaf6e806c50aa0c35833", 
+                "package": "PACKAGES_HUB_x86_64_linux_debian_11"
+            }, 
+            {
+                "Title": "Debian 11", 
+                "Arch": "aarch64", 
+                "classexpr": "am_policy_hub.debian_11.aarch64", 
+                "Published": true, 
+                "URL": "http://buildcache.cfengine.com/packages/testing-pr/jenkins-master-nightly-pipeline-1069/PACKAGES_HUB_arm_64_linux_debian_11/cfengine-nova-hub_3.21.0a.138df3742~21749.debian11_arm64.deb", 
+                "SHA256": "9ef8889b5671791b1bb5bff5d38482fd39274d28a834eaf6e806c50aa0c35833", 
+                "package": "PACKAGES_HUB_arm_64_linux_debian_11"
+            }, 
+            {
+                "Title": "Red Hat / CentOS 7", 
+                "Arch": "x86_64", 
+                "classexpr": "am_policy_hub.(redhat_7|centos_7).64_bit", 
+                "Published": true, 
+                "URL": "http://buildcache.cfengine.com/packages/testing-pr/jenkins-master-nightly-pipeline-1069/PACKAGES_HUB_x86_64_linux_redhat_7/cfengine-nova-hub-3.21.0a.138df3742-21743.el7.x86_64.rpm", 
+                "SHA256": "f2867ca6a04ce107baa1ea81afcb279e769914367138bc03f072dd6ee6158f30", 
+                "package": "PACKAGES_HUB_x86_64_linux_redhat_7"
+            }, 
+            {
+                "Title": "Red Hat / CentOS 8", 
+                "Arch": "x86_64", 
+                "classexpr": "am_policy_hub.(redhat_8|centos_8).64_bit", 
+                "Published": true, 
+                "URL": "http://buildcache.cfengine.com/packages/testing-pr/jenkins-master-nightly-pipeline-1069/PACKAGES_HUB_x86_64_linux_redhat_8/cfengine-nova-hub-3.21.0a.138df3742-21749.el8.x86_64.rpm", 
+                "SHA256": "e628a8e4be2fda177af4a67188218e798a78861ad3c4bde5ad601e396d9e02af", 
+                "package": "PACKAGES_HUB_x86_64_linux_redhat_8"
+            }, 
+            {
+                "Title": "Ubuntu 16", 
+                "Arch": "x86_64", 
+                "classexpr": "am_policy_hub.ubuntu_16.64_bit", 
+                "Published": true, 
+                "URL": "http://buildcache.cfengine.com/packages/testing-pr/jenkins-master-nightly-pipeline-1069/PACKAGES_HUB_x86_64_linux_ubuntu_16/cfengine-nova-hub_3.21.0a.138df3742~21749.ubuntu16_amd64.deb", 
+                "SHA256": "b173e2d78fd5ca97139a58e40d11e90eeedf849a0315f3cb96f7ccf6250c6198", 
+                "package": "PACKAGES_HUB_x86_64_linux_ubuntu_16"
+            }, 
+            {
+                "Title": "Ubuntu 18", 
+                "Arch": "x86_64", 
+                "classexpr": "am_policy_hub.ubuntu_18.64_bit", 
+                "Published": true, 
+                "URL": "http://buildcache.cfengine.com/packages/testing-pr/jenkins-master-nightly-pipeline-1069/PACKAGES_HUB_x86_64_linux_ubuntu_18/cfengine-nova-hub_3.21.0a.138df3742~21749.ubuntu18_amd64.deb", 
+                "SHA256": "f860270605738ae74c2a4e93e24580ad212d6f2bfa234ce022d5ce2cba21540a", 
+                "package": "PACKAGES_HUB_x86_64_linux_ubuntu_18"
+            }, 
+            {
+                "Title": "Ubuntu 20", 
+                "Arch": "x86_64", 
+                "classexpr": "am_policy_hub.ubuntu_20.64_bit", 
+                "Published": true, 
+                "URL": "http://buildcache.cfengine.com/packages/testing-pr/jenkins-master-nightly-pipeline-1069/PACKAGES_HUB_x86_64_linux_ubuntu_20/cfengine-nova-hub_3.21.0a.138df3742~21743.ubuntu20_amd64.deb", 
+                "SHA256": "353f8a29feaceb3147ea0fa8f9abbdf512790c698e9e369e71ceb41523966be8", 
+                "package": "PACKAGES_HUB_x86_64_linux_ubuntu_20"
+            },
+            {
+                "Title": "Ubuntu 22", 
+                "Arch": "aarch64", 
+                "classexpr": "am_policy_hub.ubuntu_22.aarch64", 
+                "Published": true, 
+                "URL": "http://buildcache.cfengine.com/packages/testing-pr/jenkins-master-nightly-pipeline-1069/PACKAGES_HUB_arm_64_linux_ubuntu_22/cfengine-nova-hub_3.21.0a.138df3742~21749.ubuntu22_arm64.deb", 
+                "SHA256": "be70d0369d8d276909b04e27fc3d3978445bb865ff9180056a440fa92a4b7a09",
+                "package": "PACKAGES_HUB_arm_64_linux_ubuntu_22"
+            }
+        ], 
+        "Hosts (Clients)": [
+            {
+                "Title": "Debian 9", 
+                "Arch": "x86_64", 
+                "classexpr": "!am_policy_hub.debian_9.64_bit", 
+                "Published": true, 
+                "URL": "http://buildcache.cfengine.com/packages/testing-pr/jenkins-master-nightly-pipeline-1069/PACKAGES_x86_64_linux_debian_9/cfengine-nova_3.21.0a.138df3742~21749.debian9_amd64.deb", 
+                "SHA256": "1511b4678ec5b386e9387f5a5a1e042f414495341fa3d04282f128070c71dd2d", 
+                "package": "PACKAGES_x86_64_linux_debian_9"
+            }, 
+            {
+                "Title": "Debian 10", 
+                "Arch": "x86_64", 
+                "classexpr": "!am_policy_hub.debian_10.64_bit", 
+                "Published": true, 
+                "URL": "http://buildcache.cfengine.com/packages/testing-pr/jenkins-master-nightly-pipeline-1069/PACKAGES_x86_64_linux_debian_10/cfengine-nova_3.21.0a.138df3742~21749.debian10_amd64.deb", 
+                "SHA256": "78e7b8d3c48f894469d2244efc337267f42a132c8330ce20d94158dc84e42040", 
+                "package": "PACKAGES_x86_64_linux_debian_10"
+            }, 
+            {
+                "Title": "Debian 11", 
+                "Arch": "x86_64", 
+                "classexpr": "!am_policy_hub.debian_11.64_bit", 
+                "Published": true, 
+                "URL": "http://buildcache.cfengine.com/packages/testing-pr/jenkins-master-nightly-pipeline-1069/PACKAGES_x86_64_linux_debian_11/cfengine-nova_3.21.0a.138df3742~21749.debian11_amd64.deb", 
+                "SHA256": "fb88167fb3d8abc28fcead39738e2817be9e82c568dd39827beacdef0f095742", 
+                "package": "PACKAGES_x86_64_linux_debian_11"
+            }, 
+            {
+                "Title": "Debian 11", 
+                "Arch": "aarch64", 
+                "classexpr": "!am_policy_hub.debian_11.aarch64", 
+                "Published": true, 
+                "URL": "http://buildcache.cfengine.com/packages/testing-pr/jenkins-master-nightly-pipeline-1069/PACKAGES_arm_64_linux_debian_11/cfengine-nova_3.21.0a.138df3742~21749.debian11_arm64.deb", 
+                "SHA256": "fb88167fb3d8abc28fcead39738e2817be9e82c568dd39827beacdef0f095742", 
+                "package": "PACKAGES_arm_64_linux_debian_11"
+            }, 
+            {
+                "Title": "Ubuntu 16.04", 
+                "Arch": "x86_64", 
+                "classexpr": "!am_policy_hub.ubuntu_16.64_bit", 
+                "Published": true, 
+                "URL": "http://buildcache.cfengine.com/packages/testing-pr/jenkins-master-nightly-pipeline-1069/PACKAGES_x86_64_linux_ubuntu_16/cfengine-nova_3.21.0a.138df3742~21749.ubuntu16_amd64.deb", 
+                "SHA256": "54e10de8ebab1a67e3373434bea9c5543f998d7bb6e15c6d8312f060188b64bb", 
+                "package": "PACKAGES_x86_64_linux_ubuntu_16"
+            }, 
+            {
+                "Title": "Ubuntu 18.04", 
+                "Arch": "x86_64", 
+                "classexpr": "!am_policy_hub.ubuntu_18.64_bit", 
+                "Published": true, 
+                "URL": "http://buildcache.cfengine.com/packages/testing-pr/jenkins-master-nightly-pipeline-1069/PACKAGES_x86_64_linux_ubuntu_18/cfengine-nova_3.21.0a.138df3742~21749.ubuntu18_amd64.deb", 
+                "SHA256": "5a1665ad3dbdf37d1e695f2b66165fa12e83adf959a84f3a5c64fc79f0f3a724", 
+                "package": "PACKAGES_x86_64_linux_ubuntu_18"
+            }, 
+            {
+                "Title": "Ubuntu 20.04", 
+                "Arch": "x86_64", 
+                "classexpr": "!am_policy_hub.ubuntu_20.64_bit", 
+                "Published": true, 
+                "URL": "http://buildcache.cfengine.com/packages/testing-pr/jenkins-master-nightly-pipeline-1069/PACKAGES_x86_64_linux_ubuntu_20/cfengine-nova_3.21.0a.138df3742~21749.ubuntu20_amd64.deb", 
+                "SHA256": "5430f114ffe2d392245d52c2f546f9d17cdc750dc97ba0d7cc88d6be7bd44401", 
+                "package": "PACKAGES_x86_64_linux_ubuntu_20"
+            }, 
+            {
+                "Title": "Ubuntu 22.04", 
+                "Arch": "aarch64", 
+                "classexpr": "!am_policy_hub.ubuntu_22.aarch64", 
+                "Published": true, 
+                "URL": "http://buildcache.cfengine.com/packages/testing-pr/jenkins-master-nightly-pipeline-1069/PACKAGES_arm_64_linux_ubuntu_22/cfengine-nova_3.21.0a.138df3742~21749.ubuntu22_arm64.deb", 
+                "SHA256": "73d7f6e4bbfaf73c2886a54010acffddb37a655ce92fb5b12e6f8e2fe21102c6",
+                "package": "PACKAGES_arm_64_linux_ubuntu_22"
+            }, 
+            {
+                "Title": "Red Hat / CentOS 6", 
+                "Arch": "x86_64", 
+                "classexpr": "!am_policy_hub.(redhat_6|centos_6).64_bit", 
+                "Published": true, 
+                "URL": "http://buildcache.cfengine.com/packages/testing-pr/jenkins-master-nightly-pipeline-1069/PACKAGES_x86_64_linux_redhat_6/cfengine-nova-3.21.0a.138df3742-21749.el6.x86_64.rpm", 
+                "SHA256": "289d14a8d3606d1cef21923ff93ca4823c1135fb2d10591e387081265dcf1d9f", 
+                "Footnote": 1, 
+                "package": "PACKAGES_x86_64_linux_redhat_6"
+            }, 
+            {
+                "Title": "Red Hat / CentOS 7", 
+                "Arch": "x86_64", 
+                "classexpr": "!am_policy_hub.(redhat_7|centos_7).64_bit", 
+                "Published": true, 
+                "URL": "http://buildcache.cfengine.com/packages/testing-pr/jenkins-master-nightly-pipeline-1069/PACKAGES_x86_64_linux_redhat_7/cfengine-nova-3.21.0a.138df3742-21743.el7.x86_64.rpm", 
+                "SHA256": "ca928a0d7e3bc90c46a8f2dc2b242bebb9a6bc3d3efd9329710710fe588ebb89", 
+                "Footnote": 1, 
+                "package": "PACKAGES_x86_64_linux_redhat_7"
+            }, 
+            {
+                "Title": "Red Hat / CentOS 8.1", 
+                "Arch": "x86_64", 
+                "classexpr": "!am_policy_hub.(redhat_8|centos_8).64_bit", 
+                "Published": true, 
+                "URL": "http://buildcache.cfengine.com/packages/testing-pr/jenkins-master-nightly-pipeline-1069/PACKAGES_x86_64_linux_redhat_8/cfengine-nova-3.21.0a.138df3742-21749.el8.x86_64.rpm", 
+                "SHA256": "789af3f244f9f831c7b2616a0aa0dd1aeebf528b27fe629ffcdc168c87102f21", 
+                "Footnote": 1, 
+                "package": "PACKAGES_x86_64_linux_redhat_8"
+            }, 
+            {
+                "Title": "SUSE 11", 
+                "Arch": "x86_64", 
+                "classexpr": "!am_policy_hub.(suse_11|sles_11).64_bit", 
+                "Published": true, 
+                "URL": "http://buildcache.cfengine.com/packages/testing-pr/jenkins-master-nightly-pipeline-1069/PACKAGES_x86_64_linux_suse_11/cfengine-nova-3.21.0a.138df3742-21749.suse11.x86_64.rpm", 
+                "SHA256": "a511723da6b73d14f838018b6db84b5f26d2e1d352a645933b2334c7c6ddf1a3", 
+                "package": "PACKAGES_x86_64_linux_suse_11"
+            }, 
+            {
+                "Title": "SUSE 12", 
+                "Arch": "x86_64", 
+                "classexpr": "!am_policy_hub.(suse_12|sles_12).64_bit", 
+                "Published": true, 
+                "URL": "http://buildcache.cfengine.com/packages/testing-pr/jenkins-master-nightly-pipeline-1069/PACKAGES_x86_64_linux_suse_12/cfengine-nova-3.21.0a.138df3742-21749.suse12.x86_64.rpm", 
+                "SHA256": "d37d3656aacf611686b356318dff79a977fbd33ef2c3c919e8eb53cbe9e1415a", 
+                "package": "PACKAGES_x86_64_linux_suse_12"
+            }, 
+            {
+                "Title": "SUSE 15", 
+                "Arch": "x86_64", 
+                "classexpr": "!am_policy_hub.(suse_15|sles_15).64_bit", 
+                "Published": true, 
+                "URL": "http://buildcache.cfengine.com/packages/testing-pr/jenkins-master-nightly-pipeline-1069/PACKAGES_x86_64_linux_suse_15/cfengine-nova-3.21.0a.138df3742-21749.suse15.x86_64.rpm", 
+                "SHA256": "f1236189fcb18aca440b5781d59fb83ae4f84fe6e9eecaad7ec7b48109e04a29", 
+                "package": "PACKAGES_x86_64_linux_suse_15"
+            }, 
+            {
+                "Title": "Windows Server 2008", 
+                "Arch": "x86", 
+                "classexpr": "!am_policy_hub.windows.32_bit", 
+                "Published": true, 
+                "URL": "http://buildcache.cfengine.com/packages/testing-pr/jenkins-master-nightly-pipeline-1069/PACKAGES_i386_mingw/cfengine-nova-3.21.0a-21743-i686.msi", 
+                "SHA256": "54b1011e656e3ba3c1f64b22f2d5a2c6b23118710443591367297358c177a5b7", 
+                "package": "PACKAGES_i386_mingw"
+            }, 
+            {
+                "Title": "Windows Server 2008, 2012", 
+                "Arch": "x86_64", 
+                "classexpr": "!am_policy_hub.windows.64_bit", 
+                "Published": true, 
+                "URL": "http://buildcache.cfengine.com/packages/testing-pr/jenkins-master-nightly-pipeline-1069/PACKAGES_x86_64_mingw/cfengine-nova-3.21.0a-21749-x86_64.msi", 
+                "SHA256": "f5ef56f21ff0c8e283cf09f4c36eedb09c3eecfc908ba7309a7425aaa9b512e6", 
+                "package": "PACKAGES_x86_64_mingw"
+            }, 
+            {
+                "Title": "CoreOS (XFS Filesystem image)", 
+                "Arch": "x86_64", 
+                "classexpr": "!am_policy_hub.!any", 
+                "Published": true, 
+                "URL": "http://buildcache.cfengine.com/packages/testing-pr/jenkins-master-nightly-pipeline-1069/PACKAGES_x86_64_linux_redhat_7/cfengine-nova-3.21.0a.138df3742-21743.x86_64.fs-img.pkg.tar.gz", 
+                "SHA256": "beeac59c3d50ce45902d18e91bccc466a615fb32b1fd2f19acc84f353f6e3fd9", 
+                "package": "PACKAGES_VIRTUAL_PACKAGES_coreos"
+            }
+        ], 
+        "Additional Assets": [
+            {
+                "Title": "Masterfiles ready-to-install tarball", 
+                "Arch": "no arch", 
+                "classexpr": "!any", 
+                "Published": true, 
+                "URL": "http://buildcache.cfengine.com/packages/testing-pr/jenkins-master-nightly-pipeline-1069/PACKAGES_x86_64_linux_redhat_7/tarballs/cfengine-masterfiles-3.21.0a.c8ea9855b-1.pkg.tar.gz", 
+                "SHA256": "6fda04055d7076ed59f3c472ffbf581476564f2aeb1c283ba96b13d031b09655", 
+                "package": "PACKAGES_VIRTUAL_PACKAGES_masterfiles"
+            }, 
+            {
+                "Title": "Linux binary tarball (unsupported)", 
+                "Arch": "x86_64", 
+                "classexpr": "!any", 
+                "Published": true, 
+                "URL": "http://buildcache.cfengine.com/packages/testing-pr/jenkins-master-nightly-pipeline-1069/PACKAGES_x86_64_linux_redhat_7/cfengine-nova-3.21.0a.138df3742-21743.x86_64.pkg.tar.gz", 
+                "SHA256": "f1dfbf9dc9ec3556c7bb4fd325d6c0ca2b2cc3f26da2a09ae8d69026a08ef4e4", 
+                "Footnote": 2, 
+                "Instructions": "https://docs.cfengine.com/docs/master/guide-installation-and-configuration-general-installation-installation-enterprise-generic-tarball.html"
+            }, 
+            {
+                "Title": "Vagrant Environment", 
+                "Arch": "Linux/Mac/Windows (Virtualbox)", 
+                "classexpr": "!any", 
+                "Published": true, 
+                "URL": "http://buildcache.cfengine.com/packages/testing-pr/jenkins-master-nightly-pipeline-1069/PACKAGES_x86_64_linux_redhat_7/../vagrant_quickstart/builds/CFEngine_Enterprise_vagrant_quickstart-3.21.0a-1.tar.gz", 
+                "SHA256": "cfd9f6dd61e0b859567323bcbdfd4afd3bf6bf6fd67206f41732c71388aa43c9", 
+                "Instructions": "https://docs.cfengine.com/docs/master/guide-installation-and-configuration-general-installation-installation-enterprise-vagrant.html"
+            }
+        ]
+    }, 
+    "footnotes": [
+        "Packages for Red Hat / CentOS 6 and later provide stability and performance enhancements for these platforms, but these platforms can also use the generic 64-bit packages.", 
+        "Tarball containing compiled CFEngine host (client) binaries that runs on most Linux systems but are not optimized for specific library or platform features. Appropriate for testing purposes. Not supported under the CFEngine support contract."
+    ]
+}

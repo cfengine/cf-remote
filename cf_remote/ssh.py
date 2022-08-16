@@ -18,7 +18,18 @@ class LocalConnection:
         self.ssh_user = pwd.getpwuid(os.getuid()).pw_name
 
     def run(self, command, hide=False):
-        return subprocess.run(command, capture_output=True, shell=True, text=True)
+        # to maintain Python 3.5/3.6 compatability the following are used:
+        # stdout=PIPE, stderr=STDOUT instead of capture_output=True
+        # universal_newlines=True instead of text=True
+        result = subprocess.run(
+            command,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            shell=True,
+            universal_newlines=True,
+        )
+        result.retcode = result.returncode
+        return result
 
     def put(self, src):
         src = os.path.abspath(src)
@@ -145,7 +156,8 @@ def ssh_cmd(connection, cmd, errors=False):
             print(result.stdout + result.stderr)
             log.error(msg)
         else:
-            log.debug(result.stdout + result.stderr)
+            log.debug(result.stdout if result.stdout is not None else "")
+            log.debug(result.stderr if result.stderr is not None else "")
             log.debug(msg)
         return None
 

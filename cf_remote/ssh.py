@@ -2,10 +2,12 @@ import os
 import sys
 import pwd
 import shutil
+import signal
 import subprocess
 
 from cf_remote import aramid
 from cf_remote import log
+from cf_remote import paths
 from cf_remote.utils import whoami
 
 
@@ -44,10 +46,31 @@ class Connection:
         self.ssh_user = user
         self._connect_kwargs = connect_kwargs
 
+        # Create an SSH Control Master process (man:ssh_config(5)) so that
+        # commands run on this host can reuse the same SSH connection.
+        self._control_path = os.path.join(paths.cf_remote_dir(), "%C")
+        control_master_args = ["ssh", "-M", "-N",
+                               "-oControlPath=%s" % self._control_path,
+                               ]
+        control_master_args.extend(aramid.DEFAULT_SSH_ARGS)
+        control_master_args.append("%s@%s" % (user, host))
+
+        self._ssh_control_master = subprocess.Popen(control_master_args) # stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+    def __del__(self):
+        # If we have an SSH Control Master running, signal it to terminate.
+        if self._ssh_control_master is not None and self._ssh_control_master.poll() is None:
+            self._ssh_control_master.send_signal(signal.SIGTERM)
+
     def run(self, command, hide=False):
         extra_ssh_args = []
         if "key_filename" in self._connect_kwargs:
             extra_ssh_args.extend(["-i", self._connect_kwargs["key_filename"]])
+
+        # If the Control Master process is running (poll() returns None), let's
+        # reuse its connection.
+        if self._ssh_control_master.poll() is None:
+            extra_ssh_args.extend(["-oControlPath=%s" % self._control_path])
 
         ahost = aramid.Host(self.ssh_host, self.ssh_user, extra_ssh_args)
         results = aramid.execute([ahost], command, echo=(not hide))

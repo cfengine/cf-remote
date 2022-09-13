@@ -366,6 +366,8 @@ def get_package_from_host_info(
         tags.append("arm64")
     if arch in ("i386", "i486", "i586", "i686"):
         tags.append("32")
+    if arch in ("x86_64", "amd64"):
+        tags.append(arch)
 
     extension = None
     if package_tags is not None and "msi" in package_tags:

@@ -176,7 +176,8 @@ def ssh_cmd(connection, cmd, errors=False):
     else:
         msg = "Non-sudo command unexpectedly exited: '%s' [%d]" % (cmd, result.retcode)
         if errors:
-            print(result.stdout + result.stderr)
+            print(result.stdout if result.stdout is not None else "")
+            print(result.stderr if result.stderr is not None else "")
             log.error(msg)
         else:
             log.debug(result.stdout if result.stdout is not None else "")
@@ -199,9 +200,11 @@ def ssh_sudo(connection, cmd, errors=False):
     else:
         msg = "Sudo command unexpectedly exited: '%s' [%d]" % (cmd, result.retcode)
         if errors:
-            print(result.stdout + result.stderr)
+            print(result.stdout if result.stdout is not None else "")
+            print(result.stderr if result.stderr is not None else "")
             log.error(msg)
         else:
-            log.debug(result.stdout + result.stderr)
+            log.debug(result.stdout if result.stdout is not None else "")
+            log.debug(result.stderr if result.stderr is not None else "")
             log.debug(msg)
         return None

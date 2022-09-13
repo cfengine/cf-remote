@@ -552,4 +552,5 @@ def deploy_masterfiles(host, tarball, *, connection=None):
     combined = " && ".join(commands)
     print("Running: '%s'" % combined)
     ssh_sudo(connection, combined)
+    print("Policy set successfully deployed to '%s' 🚀" % host)
     return 0

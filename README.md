@@ -201,3 +201,11 @@ CFEngine 3.15.3 (Enterprise) was successfully installed on 'localhost'
 
 Feel free to open pull requests to expand this documentation, add features or fix problems.
 You can also pick up an existing task or file an issue in [our bug tracker](https://tracker.mender.io/issues/?filter=11711).
+
+## Development
+
+To install `cf-remote` so that it reflects any changes in this source directory use:
+
+```
+$ pip install --editable .
+```

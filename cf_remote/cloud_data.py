@@ -1,4 +1,16 @@
 aws_platforms = {
+    "ubuntu-22-04-arm64": {
+        "ami": "ami-00c50882a52d323a6",
+        "user": "ubuntu",
+        "size": "t4g.micro",
+        "xlsize": "t4g.xlarge",
+    },
+    "ubuntu-22-04-x64": {
+        "ami": "ami-0d75513e7706cf2d9",
+        "user": "ubuntu",
+        "size": "t2.small",
+        "xlsize": "t3.xlarge",
+    },
     "ubuntu-20-04-x64": {
         "ami": "ami-0aef57767f5404a3c",
         "user": "ubuntu",
@@ -39,6 +51,12 @@ aws_platforms = {
         "user": "admin",
         "size": "t1.micro",
         "xlsize": "m3.xlarge",
+    },
+    "debian-11-arm64": {
+        "ami": "ami-0353cb95279bf4f20",
+        "user": "admin",
+        "size": "t4g.micro",
+        "xlsize": "t4g.xlarge",
     },
     "debian-11-x64": {
         "ami": "ami-0293236c9a0c23a77",

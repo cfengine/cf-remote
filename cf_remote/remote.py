@@ -208,7 +208,7 @@ def get_info(host, *, users=None, connection=None):
         )
 
         data["bin"] = {}
-        for bin in ["dpkg", "rpm", "yum", "apt", "pkg"]:
+        for bin in ["dpkg", "rpm", "yum", "apt", "pkg", "zypper"]:
             path = ssh_cmd(connection, "which {}".format(bin))
             if path:
                 data["bin"][bin] = path
@@ -231,7 +231,13 @@ def install_package(host, pkg, data, *, connection=None):
         # timeout doesn't work over ssh.
         output = ssh_cmd(connection, powershell(r".\{} ; sleep 10".format(pkg)), True)
     else:
-        output = ssh_sudo(connection, "yum -y install {}".format(pkg), True)
+        # generally this "else" is for rpm packages
+        if "yum" in data["bin"]:
+            output = ssh_sudo(connection, "yum -y install {}".format(pkg), True)
+        elif "zypper" in data["bin"]: # suse case
+            output = ssh_sudo(connection, "zypper install -y --allow-unsigned-rpm {}".format(pkg), True)
+        else:
+            log.error("Don't know how to install rpm package. No yum or zypper in PATH.")
     if output is None:
         log.error("Installation failed on '{}'".format(host))
 

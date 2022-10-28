@@ -98,6 +98,11 @@ class Artifact:
             self.add_tag("client")
             self.add_tag("agent")
 
+        # suse15 is equivalent to opensuse-leap and opensuse-leap15
+        if "suse15" in self.tags:
+            self.add_tag("opensuse-leap15")
+            self.add_tag("opensuse-leap")
+
         # sorry, debian packages work great on ubuntu
         # if we don't have a specific ubuntu package, note which debian is equivalent
         # only add "ubuntu" tag if we know we have an equivalent debian :)

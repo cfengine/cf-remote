@@ -222,7 +222,7 @@ def install_package(host, pkg, data, *, connection=None):
 
     print("Installing: '{}' on '{}'".format(pkg, host))
     if ".deb" in pkg:
-        output = ssh_sudo(connection, "dpkg -i {}".format(pkg), True)
+        output = ssh_sudo(connection, 'dpkg -i "{}"'.format(pkg), True)
     elif ".msi" in pkg:
         # Windows is crazy, be careful if you decide to change this;
         # This needs to work in both powershell and cmd, and in

@@ -332,7 +332,7 @@ def _package_from_releases(tags, extension, version, edition, remote_download):
 
     if not release.artifacts:
         log.error(
-            "The {} {} release is empty, visit tracker.mender.io to file a bug report".format(
+            "The {} {} release is empty, visit northerntech.atlassian.net to file a bug report".format(
                 version, edition
             )
         )

@@ -200,7 +200,7 @@ CFEngine 3.15.3 (Enterprise) was successfully installed on 'localhost'
 ## Contribute
 
 Feel free to open pull requests to expand this documentation, add features or fix problems.
-You can also pick up an existing task or file an issue in [our bug tracker](https://tracker.mender.io/issues/?filter=11711).
+You can also pick up an existing task or file an issue in [our bug tracker](https://northerntech.atlassian.net/issues/?filter=10068).
 
 ## Development
 

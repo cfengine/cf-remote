@@ -46,7 +46,6 @@ setuptools.setup(
     python_requires=">=3.5",
     entry_points={"console_scripts": ["cf-remote = cf_remote.main:main"]},
     install_requires=[
-        "requests >= 2.25.1",
         "apache-libcloud >= 3.3.1",
     ],
 )

@@ -1,16 +1,17 @@
 import os
 import fcntl
 import urllib.request
-import requests
+import json
+from collections import OrderedDict
 from cf_remote.utils import write_json, mkdir, parse_json
 from cf_remote import log
 from cf_remote.paths import cf_remote_dir, cf_remote_packages_dir
 
 
 def get_json(url):
-    r = requests.get(url)
-    assert r.status_code >= 200 and r.status_code < 300
-    data = parse_json(r.text)
+    with urllib.request.urlopen(url) as r:
+        assert r.status >= 200 and r.status < 300
+        data = json.loads(r.read().decode(), object_pairs_hook=OrderedDict)
 
     filename = os.path.basename(url)
     dir = cf_remote_dir("json")

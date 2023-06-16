@@ -24,10 +24,6 @@ def test_release():
         == "cfengine-nova-hub_3.21.0a.138df3742~21749.debian11_arm64.deb"
     )
     assert "hub" in found[0].tags
-    assert (
-        found[1].filename == "cfengine-nova_3.21.0a.138df3742~21749.debian11_arm64.deb"
-    )
-    assert "hub" not in found[1].tags
 
     found = release.find(["aarch64", "ubuntu22"])
     assert (

@@ -6,7 +6,7 @@ aws_platforms = {
         "xlsize": "t4g.xlarge",
     },
     "ubuntu-22-04-x64": {
-        "ami": "ami-0d75513e7706cf2d9",
+        "ami": "ami-01dd271720c1ba44f",
         "user": "ubuntu",
         "size": "t2.small",
         "xlsize": "t3.xlarge",

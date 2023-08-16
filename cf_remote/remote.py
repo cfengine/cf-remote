@@ -130,15 +130,15 @@ def get_package_tags(os_release=None, redhat_release=None):
 
         # Add tags with version number first, to filter by them first:
         tags.append(platform_tag)  # Example: ubuntu16
-        if distro == "centos" or distro == "rhel":
+        if distro == "centos" or distro == "rhel" or distro == "ol":
             tags.append("el" + major)
 
         # Then add more generic tags (lower priority):
         tags.append(distro)  # Example: ubuntu
-        if distro == "centos":
+        if distro == "centos" or distro == "ol":
             tags.append("rhel")
 
-        if distro == "centos" or distro == "rhel":
+        if distro == "centos" or distro == "rhel" or distro == "ol":
             tags.append("el")
     elif redhat_release is not None:
         # Examples:

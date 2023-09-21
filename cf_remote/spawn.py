@@ -318,6 +318,11 @@ def spawn_vm_in_aws(
         if any(vm.state in (0, "running") and vm.name == name for vm in existing_vms):
             raise ValueError("VM with the name '%s' already exists" % name)
 
+    # new style, query for debian 11
+    # assumes names are sorted and last is most recent, works for debian-11-arm64-* so far
+    image = driver.list_images(ex_owner=aws_platform["owner_id"], ex_filters={"name": aws_platform["name_filter"]}), key=lambda image: image.name)[-1:]
+    ami = image.id
+    
     aws_platform = aws_platforms[platform]
     size = size or aws_platform.get("xlsize") or aws_platform["size"]
     user = aws_platform.get("user")

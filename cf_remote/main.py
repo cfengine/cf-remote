@@ -102,7 +102,7 @@ def _get_arg_parser():
         type=str,
     )
 
-    sp = subp.add_parser("uninstall", help="Install CFEngine on the given hosts")
+    sp = subp.add_parser("uninstall", help="Uninstall CFEngine on the given hosts")
     sp.add_argument("--clients", "-c", help="Where to uninstall", type=str)
     sp.add_argument("--hub", help="Where to uninstall", type=str)
     sp.add_argument("--hosts", "-H", help="Where to uninstall", type=str)

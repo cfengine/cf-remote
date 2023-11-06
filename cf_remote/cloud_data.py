@@ -64,6 +64,12 @@ aws_platforms = {
         "size": "t1.micro",
         "xlsize": "m3.xlarge",
     },
+    "debian-12-x64": {
+        "ami": "ami-07024fbdfd1aab8a0",
+        "user": "admin",
+        "size": "t1.micro",
+        "xlsize": "m3.xlarge",
+    },
     "centos-6-x64": {
         "ami": "ami-05bd23226cb7c2896",
         "user": "centos",

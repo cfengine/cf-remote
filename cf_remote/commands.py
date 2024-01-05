@@ -800,14 +800,20 @@ def deploy(hubs, masterfiles):
     ):
         masterfiles = "out/masterfiles.tgz"
         print("Found cfbs policy set: '{}'".format(masterfiles))
-    elif masterfiles.startswith(("http://", "https://")):
+    elif masterfiles and masterfiles.startswith(("http://", "https://")):
         urls = [masterfiles]
         paths = _download_urls(urls)
         assert len(paths) == 1
         masterfiles = paths[0]
         log.debug("Deploying downloaded: %s" % masterfiles)
     else:
+        if not masterfiles:
+            masterfiles = "."
+        if not (os.path.isfile("promises.cf") or os.path.isfile("promises.cf.in")):
+            user_error("No cfbs or masterfiles policy set found")
+
         masterfiles = os.path.abspath(os.path.expanduser(masterfiles))
+        print("Found masterfiles policy set: '{}'".format(masterfiles))
         log.debug("Deploy path expanded to: %s" % masterfiles)
 
     masterfiles = masterfiles.rstrip("/")

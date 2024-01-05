@@ -130,15 +130,32 @@ def get_package_tags(os_release=None, redhat_release=None):
 
         # Add tags with version number first, to filter by them first:
         tags.append(platform_tag)  # Example: ubuntu16
-        if distro == "centos" or distro == "rhel" or distro == "ol" or distro == "rocky" or distro == "almalinux":
+        if (
+            distro == "centos"
+            or distro == "rhel"
+            or distro == "ol"
+            or distro == "rocky"
+            or distro == "almalinux"
+        ):
             tags.append("el" + major)
 
         # Then add more generic tags (lower priority):
         tags.append(distro)  # Example: ubuntu
-        if distro == "centos" or distro == "ol" or distro == "rocky" or distro == "almalinux":
+        if (
+            distro == "centos"
+            or distro == "ol"
+            or distro == "rocky"
+            or distro == "almalinux"
+        ):
             tags.append("rhel")
 
-        if distro == "centos" or distro == "rhel" or distro == "ol" or distro == "rocky" or distro == "almalinux":
+        if (
+            distro == "centos"
+            or distro == "rhel"
+            or distro == "ol"
+            or distro == "rocky"
+            or distro == "almalinux"
+        ):
             tags.append("el")
     elif redhat_release is not None:
         # Examples:
@@ -234,10 +251,16 @@ def install_package(host, pkg, data, *, connection=None):
         # generally this "else" is for rpm packages
         if "yum" in data["bin"]:
             output = ssh_sudo(connection, "yum -y install {}".format(pkg), True)
-        elif "zypper" in data["bin"]: # suse case
-            output = ssh_sudo(connection, "zypper install -y --allow-unsigned-rpm {}".format(pkg), True)
+        elif "zypper" in data["bin"]:  # suse case
+            output = ssh_sudo(
+                connection,
+                "zypper install -y --allow-unsigned-rpm {}".format(pkg),
+                True,
+            )
         else:
-            log.error("Don't know how to install rpm package. No yum or zypper in PATH.")
+            log.error(
+                "Don't know how to install rpm package. No yum or zypper in PATH."
+            )
     if output is None:
         log.error("Installation failed on '{}'".format(host))
 

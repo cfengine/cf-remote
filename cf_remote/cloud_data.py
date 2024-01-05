@@ -158,4 +158,16 @@ aws_platforms = {
         "size": "t2.small",
         "xlsize": "t2.xlarge",
     },
+    "suse-12-x64": {
+        "ami": "ami-0d5622d69a166848b",
+        "user": "ec2-user",
+        "size": "t2.small",
+        "xlsize": "t2.xlarge",
+    },
+    "suse-15-x64": {
+        "ami": "ami-0e5e442298b8e7f5a",
+        "user": "ec2-user",
+        "size": "t2.small",
+        "xlsize": "t2.xlarge",
+    },
 }

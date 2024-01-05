@@ -252,10 +252,14 @@ def install_package(host, pkg, data, *, connection=None):
         if "yum" in data["bin"]:
             output = ssh_sudo(connection, "yum -y install {}".format(pkg), True)
         elif "zypper" in data["bin"]:  # suse case
+            allow_unsigned = (
+                ""
+                if data["os_release"]["VERSION"]
+                == "12-SP5"  # Does not support the option
+                else "--allow-unsigned-rpm"
+            )
             output = ssh_sudo(
-                connection,
-                "zypper install -y --allow-unsigned-rpm {}".format(pkg),
-                True,
+                connection, "zypper install -y {} {}".format(allow_unsigned, pkg), True
             )
         else:
             log.error(

@@ -43,6 +43,8 @@ jobs:
       run: |
         python setup.py sdist bdist_wheel
         pip install dist/cf_remote-*.whl
+    - name: Sanity check
+      run: cf-remote -V
 # No bash tests yet, see: https://github.com/cfengine/cfbs
 #    - name: Run bash tests
 #      run: |

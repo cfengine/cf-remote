@@ -354,6 +354,9 @@ def _package_from_releases(tags, extension, version, edition, remote_download):
     release = releases.default
     if version:
         release = releases.pick_version(version)
+    if release is None:
+        print("Could not find a release for version {}".format(version))
+        return None
 
     release.init_download()
 

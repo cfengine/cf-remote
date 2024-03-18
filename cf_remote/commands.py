@@ -328,7 +328,6 @@ def spawn(
     public_ip=True,
     extend_group=False,
 ):
-
     if os.path.exists(CLOUD_CONFIG_FPATH):
         creds_data = read_json(CLOUD_CONFIG_FPATH)
     else:
@@ -392,17 +391,21 @@ def spawn(
         )
     print("Spawning VMs...", end="")
     sys.stdout.flush()
-    vms = spawn_vms(
-        requests,
-        creds,
-        region,
-        key_pair,
-        security_groups=sec_groups,
-        provider=provider,
-        network=network,
-        role=role,
-        spawned_cb=print_progress_dot,
-    )
+    try:
+        vms = spawn_vms(
+            requests,
+            creds,
+            region,
+            key_pair,
+            security_groups=sec_groups,
+            provider=provider,
+            network=network,
+            role=role,
+            spawned_cb=print_progress_dot,
+        )
+    except ValueError as e:
+        print("Failed to spawn VMs with following error:\n" + str(e))
+        return 1
     print("DONE")
 
     if public_ip and (not all(vm.public_ips for vm in vms)):

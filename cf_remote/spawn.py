@@ -4,6 +4,7 @@ from collections import namedtuple
 from enum import Enum
 from multiprocessing.dummy import Pool
 
+from libcloud.common.types import InvalidCredsError
 from libcloud.compute.types import Provider
 from libcloud.compute.providers import get_driver
 from libcloud.compute.base import NodeSize, NodeImage
@@ -307,9 +308,14 @@ def spawn_vm_in_aws(
     size=None,
     role=None,
 ):
-    driver = get_cloud_driver(Providers.AWS, aws_creds, region)
-    existing_vms = driver.list_nodes()
-
+    try:
+        driver = get_cloud_driver(Providers.AWS, aws_creds, region)
+        existing_vms = driver.list_nodes()
+    except InvalidCredsError as error:
+        raise ValueError(
+            "Invalid credentials, check cloud_config.json file, details: \n"
+            + str(error)
+        )
     if name is None:
         name = _get_unused_name(
             [vm.name for vm in existing_vms], platform, _NAME_RANDOM_PART_LENGTH

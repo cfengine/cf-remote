@@ -12,7 +12,7 @@ from libcloud.compute.base import NodeSize, NodeImage
 from cf_remote.cloud_data import aws_platforms
 from cf_remote.utils import whoami
 from cf_remote import log
-
+from cf_remote import cloud_data
 
 _NAME_RANDOM_PART_LENGTH = 4
 
@@ -323,7 +323,9 @@ def spawn_vm_in_aws(
     else:
         if any(vm.state in (0, "running") and vm.name == name for vm in existing_vms):
             raise ValueError("VM with the name '%s' already exists" % name)
-
+    if not platform in aws_platforms:
+        raise ValueError("Platform '%s' does not exist.\nList of available platforms:\n%s" % (platform,
+                         "\n".join(cloud_data.aws_platforms.keys())))
     aws_platform = aws_platforms[platform]
     size = size or aws_platform.get("xlsize") or aws_platform["size"]
     user = aws_platform.get("user")

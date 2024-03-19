@@ -308,14 +308,15 @@ def spawn_vm_in_aws(
     size=None,
     role=None,
 ):
+    if platform not in aws_platforms:
+        raise ValueError("Platform '%s' does not exist. (Available platforms: %s)" % (platform,
+                         ", ".join(cloud_data.aws_platforms.keys())))
     try:
         driver = get_cloud_driver(Providers.AWS, aws_creds, region)
         existing_vms = driver.list_nodes()
     except InvalidCredsError as error:
         raise ValueError(
-            "Invalid credentials, check cloud_config.json file, details: \n"
-            + str(error)
-        )
+            "Invalid credentials, check cloud_config.json (%s.)" % str(error)[1:-1])
     if name is None:
         name = _get_unused_name(
             [vm.name for vm in existing_vms], platform, _NAME_RANDOM_PART_LENGTH
@@ -323,9 +324,6 @@ def spawn_vm_in_aws(
     else:
         if any(vm.state in (0, "running") and vm.name == name for vm in existing_vms):
             raise ValueError("VM with the name '%s' already exists" % name)
-    if not platform in aws_platforms:
-        raise ValueError("Platform '%s' does not exist.\nList of available platforms:\n%s" % (platform,
-                         "\n".join(cloud_data.aws_platforms.keys())))
     aws_platform = aws_platforms[platform]
     size = size or aws_platform.get("xlsize") or aws_platform["size"]
     user = aws_platform.get("user")

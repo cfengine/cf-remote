@@ -404,7 +404,7 @@ def spawn(
             spawned_cb=print_progress_dot,
         )
     except ValueError as e:
-        print("Failed to spawn VMs with following error:\n" + str(e))
+        print("\nError: Failed to spawn VMs - " + str(e))
         return 1
     print("DONE")
 

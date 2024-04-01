@@ -556,8 +556,14 @@ def destroy(group_name=None):
 
 
 def list_platforms():
+    print()
+    print("Platform images are queried based on the platform name, version and architecture.")
+    print("The form of platform specified is: <platform_name>[-<version>][-<architecture>]. e.g. debian, debian-12 or debian-12-x64")
+    print("Ubuntu version can be just major (20) or major+minor (20-04)")
+    print("Architecture can either be x64 or arm64")
+    print()
     print("Available platforms:")
-    for key in sorted(cloud_data.aws_platforms.keys()):
+    for key in sorted(cloud_data.aws_image_criteria.keys()):
         print(key)
     return 0
 

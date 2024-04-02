@@ -209,3 +209,9 @@ To install `cf-remote` so that it reflects any changes in this source directory 
 ```
 $ pip install --editable .
 ```
+
+## cloud_data.py tips
+
+In order to find AWS images for a particular owner to work on cloud_data.py name_pattern list the names for an owner with the following `aws` command:
+
+aws ec2 describe-images --region us-east-2 --owners 801119661308 --query 'Images[*].[Name]' --output text

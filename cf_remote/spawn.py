@@ -9,7 +9,7 @@ from libcloud.compute.types import Provider
 from libcloud.compute.providers import get_driver
 from libcloud.compute.base import NodeSize, NodeImage
 
-from cf_remote.cloud_data import aws_platforms
+from cf_remote.cloud_data import aws_image_criteria, aws_defaults
 from cf_remote.utils import whoami
 from cf_remote import log
 from cf_remote import cloud_data
@@ -298,6 +298,69 @@ def get_cloud_driver(provider, creds, region):
     return driver
 
 
+# the string platform_name can be platform, platform-version(partial even), or platform-version-architecture
+# The data in cloud_data.py aws_image_criteria can have general information for just
+# `platform` or include all the components if necessary.
+#
+# Generally up-to-date versions should use a generic criteria which pulls the most up to date
+# image for that platform and version.
+def _get_image_criteria(platform_name):
+    log.debug("Looking for AWS AMI for platform_name '%s'" % (platform_name))
+    platform = platform_name.split("-")[0]
+    if platform == "ubuntu":
+        if platform_name.count("-") > 0:
+            platform_version = ".".join(platform_name.split("-")[1:-1])
+        else:
+            platform_version = ""
+    else:
+        platform_version = (
+            platform_name.count("-") > 0 and platform_name.split("-")[1] or "*"
+        )
+    log.debug(
+        "Parsed platform_version '%s' from platform_name '%s'"
+        % (platform_version, platform_name)
+    )
+    platform_with_major_version = "-".join(platform_name.split("-")[0:2])
+    architecture = platform_name.split("-")[-1]
+    # architecture should be either x64 or arm64
+    if not (architecture == "x64" or architecture == "arm64"):
+        # default to x64
+        architecture = "x64"
+    # translate cf-remote x64 to amazon x86_64
+    if architecture == "x64":
+        architecture = "x86_64"
+    log.debug("Determined architecture to be '%s'" % (architecture))
+
+    # Assign a value to criteria variable based on the given conditions
+    if platform_with_major_version in aws_image_criteria:
+        criteria = aws_image_criteria[platform_with_major_version]
+    else:
+        criteria = aws_image_criteria[platform]
+
+    criteria["architecture"] = architecture
+    criteria["version"] = platform_version
+    log.debug("Determined image criteria: %s" % (criteria))
+    return criteria
+
+
+def _get_ami(criteria, driver):
+    candidates = driver.list_images(
+        ex_owner=criteria["owner_id"],
+        ex_filters={
+            "name": criteria["name_pattern"].format(version=criteria["version"]),
+            "architecture": criteria["architecture"],
+            "virtualization-type": "hvm",
+        },
+    )
+    if len(candidates) == 0:
+        raise ValueError("No images found for criteria: %s" % (criteria))
+    selected = sorted(candidates, key=lambda x: x.extra["creation_date"], reverse=True)[
+        0
+    ]
+    log.debug("Selected image %s" % (selected))
+    return selected.id
+
+
 def spawn_vm_in_aws(
     platform,
     aws_creds,
@@ -308,15 +371,19 @@ def spawn_vm_in_aws(
     size=None,
     role=None,
 ):
-    if platform not in aws_platforms:
-        raise ValueError("Platform '%s' does not exist. (Available platforms: %s)" % (platform,
-                         ", ".join(cloud_data.aws_platforms.keys())))
+    platform_name = platform.split("-")[0]
+    if platform_name not in aws_image_criteria:
+        raise ValueError(
+            "Platform '%s' is not in our set of image criteria. (Available platforms: %s)"
+            % (platform, ", ".join(cloud_data.aws_image_criteria.keys()))
+        )
     try:
         driver = get_cloud_driver(Providers.AWS, aws_creds, region)
         existing_vms = driver.list_nodes()
     except InvalidCredsError as error:
         raise ValueError(
-            "Invalid credentials, check cloud_config.json (%s.)" % str(error)[1:-1])
+            "Invalid credentials, check cloud_config.json (%s.)" % str(error)[1:-1]
+        )
     if name is None:
         name = _get_unused_name(
             [vm.name for vm in existing_vms], platform, _NAME_RANDOM_PART_LENGTH
@@ -324,31 +391,50 @@ def spawn_vm_in_aws(
     else:
         if any(vm.state in (0, "running") and vm.name == name for vm in existing_vms):
             raise ValueError("VM with the name '%s' already exists" % name)
-    aws_platform = aws_platforms[platform]
-    size = size or aws_platform.get("xlsize") or aws_platform["size"]
-    user = aws_platform.get("user")
-    ami = aws_platform["ami"]
+    criteria = _get_image_criteria(platform)
+    architecture = criteria["architecture"] or aws_defaults["architecture"]
+    sizes = criteria.get("sizes") or aws_defaults["sizes"]
+    small = sizes[architecture]["size"]
+    large = sizes[architecture]["xlsize"]
+    if size == None:
+        size = (large or small) if (role == "hub") else (small or large)
+    user = criteria.get("user") or aws_defaults["user"]
+    ami = criteria.get("ami") or _get_ami(criteria, driver)
+    if "region" in criteria and region != criteria["region"]:
+        raise ValueError(
+            "AMI for platform '%s'(%s) is only available in region '%s' and not in your configured region of '%s'."
+            % (platform, ami, criteria["region"], region)
+        )
 
-    log.info("Spawning new '%s' VM in AWS (AMI: %s, size=%s)" % (platform, ami, size))
-    node = driver.create_node(
-        name=name,
-        image=NodeImage(id=ami, name=None, driver=driver),
-        size=NodeSize(
-            id=size,
-            name=None,
-            ram=None,
-            disk=None,
-            bandwidth=None,
-            price=None,
-            driver=driver,
-        ),
-        ex_keyname=key_pair,
-        ex_security_groups=security_groups,
-        ex_metadata={
-            "created-by": "cf-remote",
-            "owner": whoami(),
-        },
+    print(
+        "Spawning new platform '%s' VM in AWS (AMI: %s, size=%s) %s"
+        % (platform, ami, size, criteria.get("note", ""))
     )
+    try:
+        node = driver.create_node(
+            name=name,
+            image=NodeImage(id=ami, name=None, driver=driver),
+            size=NodeSize(
+                id=size,
+                name=None,
+                ram=None,
+                disk=None,
+                bandwidth=None,
+                price=None,
+                driver=driver,
+            ),
+            ex_keyname=key_pair,
+            ex_security_groups=security_groups,
+            ex_metadata={
+                "created-by": "cf-remote",
+                "owner": whoami(),
+            },
+        )
+    except Exception as e:
+        raise ValueError(
+            "Problem spawning '%s' VM in AWS (AMI: %s, size=%s). Error: %s"
+            % (platform, ami, size, e)
+        )
 
     return VM(
         name,

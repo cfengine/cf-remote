@@ -217,6 +217,12 @@ def get_info(host, *, users=None, connection=None):
         data["policy_server"] = ssh_cmd(
             connection, "cat /var/cfengine/policy_server.dat"
         )
+        if user != "root" and not data["policy_server"]:
+            # If we are not SSHing as root and we failed to read
+            # the policy_server.dat file try again using sudo:
+            data["policy_server"] = ssh_sudo(
+                connection, "cat /var/cfengine/policy_server.dat"
+            )
 
         agent = r"/var/cfengine/bin/cf-agent"
         data["agent"] = agent

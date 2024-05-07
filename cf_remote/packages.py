@@ -103,6 +103,12 @@ class Artifact:
             self.add_tag("opensuse-leap15")
             self.add_tag("opensuse-leap")
 
+
+        # We don't build for Fedora, so we need to map the distro to the correct packages
+        if "el9" in self.tags:
+            self.add_tag("fedora40")
+            log.debug("Mapping fedora40 host tag to el9 package tag")
+
         parts = filename.split(".")
         if "x86_64" in parts:
             self.add_tag("x86_64")

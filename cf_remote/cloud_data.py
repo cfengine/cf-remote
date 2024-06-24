@@ -28,6 +28,11 @@ aws_image_criteria = {
         "name_pattern": "ubuntu-pro-server/images/hvm-ssd/ubuntu-xenial-16.04-amd64-pro-server*",
         "user": "ubuntu",
     },
+    "ubuntu-24": {
+        "owner_id": "099720109477",
+        "name_pattern": "ubuntu/images/hvm-ssd-gp3/ubuntu-*-{version}*",
+        "user": "ubuntu",
+    },
     "ubuntu": {
         "owner_id": "099720109477",
         "name_pattern": "ubuntu/images/hvm-ssd/ubuntu-*-{version}*",

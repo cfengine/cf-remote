@@ -43,6 +43,7 @@ aws_image_criteria = {
         "owner_id": "304194462000",
         "name_pattern": "centos-{version}-x64",
         "region": "eu-west-1",
+        "user": "centos",
     },
     "rhel": {
         "owner_id": "309956199498",

@@ -251,7 +251,7 @@ def _get_arg_parser():
     dp.add_argument(
         "--all", help="Destroy all hosts spawned in the clouds", action="store_true"
     )
-    dp.add_argument("name", help="Name fo the group of hosts to destroy", nargs="?")
+    dp.add_argument("name", help="Name of the group of hosts to destroy", nargs="?")
 
     sp = subp.add_parser("deploy", help="Deploy policy-set (masterfiles) to hub")
     sp.add_argument("--hub", help="Hub(s) to deploy to", type=str)

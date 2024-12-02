@@ -27,6 +27,7 @@ from cf_remote.utils import (
     write_json,
     whoami,
     get_package_name,
+    user_error,
 )
 from cf_remote.utils import user_error, is_package_url, print_progress_dot
 from cf_remote.spawn import VM, VMRequest, Providers, AWSCredentials, GCPCredentials
@@ -278,6 +279,9 @@ def install(
 def _iterate_over_packages(tags=None, version=None, edition=None, download=False):
     releases = Releases(edition)
     print("Available releases: {}".format(releases))
+
+    if version not in [rel.version for rel in releases.releases] :
+        user_error("CFEngine version '%s' doesn't exist (yet)." % version)
 
     release = releases.default
     if version:

@@ -1,3 +1,4 @@
+from datetime import datetime
 import os
 import sys
 import time
@@ -606,7 +607,8 @@ def save(name, hosts, role):
     if "@" + name in state:
         print("Group '{}' already exists".format(name))
         return 1
-    group = {"meta": {"saved": True}}
+    current_time = datetime.now().astimezone().replace(microsecond=0).isoformat()
+    group = {"meta": {"saved": True, "date": current_time}}
     for index, host in enumerate(hosts):
         split = host.split("@")
         if len(split) != 2:
@@ -734,6 +736,9 @@ def show(ansible_inventory):
             del group["meta"]
             if "region" in meta and "provider" in meta:
                 extra = " in {}, {}".format(meta["region"], meta["provider"])
+            if "date" in meta :
+                added = "saved" if "saved" in meta and meta["saved"] else "spawned"
+                extra += ", {} {}".format(added, meta["date"])
         print(
             "{}: ({} host{}{})".format(
                 group_name, len(group), "s" if len(group) > 1 else "", extra

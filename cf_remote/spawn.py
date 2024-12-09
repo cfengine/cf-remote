@@ -1,3 +1,4 @@
+from datetime import datetime
 import string
 import random
 from collections import namedtuple
@@ -587,7 +588,8 @@ def destroy_vms(vms):
 
 
 def dump_vms_info(vms):
-    ret = {"meta": {}}
+    current_time = datetime.now().astimezone().replace(microsecond=0).isoformat()
+    ret = {"meta": {"date": current_time}}
     duplicate_info_keys = []
     providers = {vm.provider for vm in vms}
     if len(providers) == 1:

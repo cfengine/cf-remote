@@ -70,10 +70,13 @@ def read_file(path):
 
 
 def save_file(path, data):
-    if "/" in path:
-        mkdir("/".join(path.split("/")[0:-1]))
-    with open(path, "w") as f:
-        f.write(data)
+    try :
+        if "/" in path:
+            mkdir("/".join(path.split("/")[0:-1]))
+        with open(path, "w") as f:
+            f.write(data)
+    except PermissionError:
+        user_error("No permission to write to '{}'.".format(path))
 
 
 def pretty(data):

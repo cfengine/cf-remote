@@ -1,4 +1,5 @@
 import os
+from cf_remote.utils import user_error
 
 
 def path_append(dir, subdir):
@@ -7,6 +8,16 @@ def path_append(dir, subdir):
 
 
 def cfengine_dir(subdir=None):
+    override_dir = os.getenv("CF_REMOTE_DIR")
+
+    if override_dir:
+        parent = os.path.dirname(override_dir)
+
+        if not os.path.exists(parent):
+            user_error("'{}' doesn't exist. Make sure this path is correct and exists.".format(parent))
+
+        return path_append(override_dir, subdir)
+
     return path_append("~/.cfengine/", subdir)
 
 

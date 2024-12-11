@@ -249,6 +249,7 @@ def get_info(host, *, users=None, connection=None):
 def install_package(host, pkg, data, *, connection=None):
 
     print("Installing: '{}' on '{}'".format(pkg, host))
+    output = None
     if ".deb" in pkg:
         output = ssh_sudo(connection, 'dpkg -i "{}"'.format(pkg), True)
     elif ".msi" in pkg:
@@ -391,7 +392,7 @@ def _package_from_releases(tags, extension, version, edition, remote_download):
     if remote_download:
         return artifact.url
     else:
-        return download_package(artifact.url)
+        return download_package(artifact.url, checksum=artifact.checksum)
 
 
 def get_package_from_host_info(

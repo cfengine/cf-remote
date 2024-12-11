@@ -26,6 +26,8 @@ class Artifact:
         self.tags = ["any"]
         self.create_tags()
 
+        self.checksum = data.get("SHA256")
+
     def create_tags(self):
         if self.arch:
             self.add_tag(self.arch)

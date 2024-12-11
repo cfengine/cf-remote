@@ -91,10 +91,15 @@ def print_info(data):
     agent_version = data["agent_version"]
     if agent_version:
         output["CFEngine"] = agent_version
+
+        policy_server = data.get("policy_server")
+        if policy_server :
+            output["Policy server"] = policy_server
+        else :
+            output["Policy server"] = "None (not bootstrapped yet)"
     else:
         output["CFEngine"] = "Not installed"
 
-    output["Policy server"] = data.get("policy_server")
 
     binaries = []
     if "bin" in data:

@@ -22,6 +22,8 @@ from cf_remote.paths import (
     cf_remote_packages_dir,
 )
 from cf_remote.utils import (
+    copy_file,
+    mkdir,
     save_file,
     strip_user,
     read_json,
@@ -277,7 +279,7 @@ def install(
     return errors
 
 
-def _iterate_over_packages(tags=None, version=None, edition=None, download=False):
+def _iterate_over_packages(tags=None, version=None, edition=None, download=False, output_dir=None):
     releases = Releases(edition)
     print("Available releases: {}".format(releases))
 
@@ -296,7 +298,17 @@ def _iterate_over_packages(tags=None, version=None, edition=None, download=False
     else:
         for artifact in artifacts:
             if download:
-                download_package(artifact.url, checksum=artifact.checksum)
+                package_path= download_package(artifact.url, checksum=artifact.checksum)
+                if output_dir :
+                    output_dir = os.path.normpath(output_dir)
+                    parent = os.path.dirname(output_dir)
+                    if not os.path.exists(parent):
+                        user_error("'{}' doesn't exist. Make sure this path is correct and exists.".format(parent))
+                    mkdir(output_dir)
+
+                    filename = os.path.basename(artifact.url)
+                    output_path = os.path.join(output_dir, filename)
+                    copy_file(package_path, output_path)
             else:
                 print(artifact.url)
     return 0
@@ -307,8 +319,8 @@ def list_command(tags=None, version=None, edition=None):
     return _iterate_over_packages(tags, version, edition, False)
 
 
-def download(tags=None, version=None, edition=None):
-    return _iterate_over_packages(tags, version, edition, True)
+def download(tags=None, version=None, edition=None, output_dir=None):
+    return _iterate_over_packages(tags, version, edition, True, output_dir)
 
 
 def _get_aws_creds_from_env():

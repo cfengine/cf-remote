@@ -138,6 +138,12 @@ def _get_arg_parser():
     )
     sp.add_argument("tags", metavar="TAG", nargs="*")
 
+    sp.add_argument("--output-dir",
+                    "-o",
+                    help="Where to download",
+                    type=str
+                    )
+
     sp = subp.add_parser(
         "run", help="Run the command given as arguments on the given hosts"
     )
@@ -311,7 +317,7 @@ def run_command_with_args(command, args):
         )
     elif command == "download":
         return commands.download(
-            tags=args.tags, version=args.version, edition=args.edition
+            tags=args.tags, version=args.version, edition=args.edition, output_dir=args.output_dir
         )
     elif command == "run":
         return commands.run(hosts=args.hosts, raw=args.raw, command=args.remote_command)

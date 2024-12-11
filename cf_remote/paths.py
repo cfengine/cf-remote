@@ -11,6 +11,7 @@ def cfengine_dir(subdir=None):
     override_dir = os.getenv("CF_REMOTE_DIR")
 
     if override_dir:
+        override_dir = os.path.normpath(override_dir)
         parent = os.path.dirname(override_dir)
 
         if not os.path.exists(parent):

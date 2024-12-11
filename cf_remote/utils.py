@@ -1,4 +1,5 @@
 import os
+import shutil
 import sys
 import re
 import json
@@ -202,3 +203,13 @@ def whoami():
 def print_progress_dot(*args):
     print(".", end="")
     sys.stdout.flush()  # STDOUT is line-buffered
+
+def copy_file(input_path, output_path) :
+    filename = os.path.basename(input_path)
+    output_dir = os.path.dirname(output_path)
+
+    tmp_filename = '.{}.tmp'.format(filename)
+    tmp_output_path = os.path.join(output_dir, tmp_filename)
+
+    shutil.copyfile(input_path, tmp_output_path) 
+    os.rename(tmp_output_path, output_path)

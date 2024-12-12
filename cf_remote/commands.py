@@ -761,10 +761,10 @@ def show(ansible_inventory):
     return 0
 
 
-def uninstall(hosts):
+def uninstall(hosts, purge=False):
     errors = 0
     for host in hosts:
-        errors += uninstall_host(host)
+        errors += uninstall_host(host, purge=purge)
     return errors
 
 

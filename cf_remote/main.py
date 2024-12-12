@@ -103,6 +103,7 @@ def _get_arg_parser():
     )
 
     sp = subp.add_parser("uninstall", help="Uninstall CFEngine on the given hosts")
+    sp.add_argument("--purge", help="Complete uninstallation", nargs="?", const=True, type=bool)
     sp.add_argument("--clients", "-c", help="Where to uninstall", type=str)
     sp.add_argument("--hub", help="Where to uninstall", type=str)
     sp.add_argument("--hosts", "-H", help="Where to uninstall", type=str)
@@ -296,7 +297,7 @@ def run_command_with_args(command, args):
         )
     elif command == "uninstall":
         all_hosts = (args.hosts or []) + (args.hub or []) + (args.clients or [])
-        return commands.uninstall(all_hosts)
+        return commands.uninstall(all_hosts, purge=args.purge)
     elif command == "packages":
         log.warning(
             "packages command is deprecated, please use the new command: download"

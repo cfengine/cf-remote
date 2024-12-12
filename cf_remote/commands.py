@@ -296,7 +296,7 @@ def _iterate_over_packages(tags=None, version=None, edition=None, download=False
     else:
         for artifact in artifacts:
             if download:
-                download_package(artifact.url)
+                download_package(artifact.url, checksum=artifact.checksum)
             else:
                 print(artifact.url)
     return 0

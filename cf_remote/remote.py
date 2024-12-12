@@ -284,7 +284,7 @@ def install_package(host, pkg, data, *, connection=None):
 
 
 @auto_connect
-def uninstall_cfengine(host, data, *, connection=None):
+def uninstall_cfengine(host, data, *, connection=None, purge=False):
     print("Uninstalling CFEngine on '{}'".format(host))
 
     if "dpkg" in data["bin"]:
@@ -329,6 +329,9 @@ def uninstall_cfengine(host, data, *, connection=None):
     run_command(
         host, "rm -rf /var/cfengine /opt/cfengine", connection=connection, sudo=True
     )
+    if purge:
+        run_command(host, "rm -rf /var/log/CFEngine-Install*", connection=connection, sudo=True)
+        run_command(host, "rm -rf /etc/systemd/system/cf-php-fpm.service", connection=connection, sudo=True)
 
 
 @auto_connect
@@ -554,7 +557,7 @@ class HostInstaller:
 
 
 @auto_connect
-def uninstall_host(host, *, connection=None):
+def uninstall_host(host, *, connection=None, purge=False):
     data = get_info(host, connection=connection)
     print_info(data)
 
@@ -565,7 +568,7 @@ def uninstall_host(host, *, connection=None):
             )
         )
 
-    uninstall_cfengine(host, data, connection=connection)
+    uninstall_cfengine(host, data, connection=connection, purge=purge)
     data = get_info(host, connection=connection)
 
     if (not data) or data["agent_version"]:

@@ -1,3 +1,4 @@
+import hashlib
 import os
 import sys
 import re
@@ -202,3 +203,10 @@ def whoami():
 def print_progress_dot(*args):
     print(".", end="")
     sys.stdout.flush()  # STDOUT is line-buffered
+
+
+def is_different_checksum(checksum, content) :
+    assert type(content) == bytes
+
+    digest = hashlib.sha256(content).digest().hex()
+    return checksum != digest

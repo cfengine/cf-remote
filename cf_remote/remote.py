@@ -328,7 +328,7 @@ def uninstall_cfengine(host, data, *, connection=None, purge=False):
     run_command(
         host, "rm -rf /var/cfengine /opt/cfengine", connection=connection, sudo=True
     )
-    if purge :
+    if purge:
         run_command(host, "rm -rf /var/log/CFEngine-Install*", connection=connection, sudo=True)
         run_command(host, "rm -rf /etc/systemd/system/cf-php-fpm.service", connection=connection, sudo=True)
 

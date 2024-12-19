@@ -5,7 +5,7 @@ import re
 import urllib.request
 import json
 from collections import OrderedDict
-from cf_remote.utils import user_error, write_json, mkdir, parse_json
+from cf_remote.utils import is_different_checksum, user_error, write_json, mkdir, parse_json
 from cf_remote import log
 from cf_remote.paths import cf_remote_dir, cf_remote_packages_dir
 
@@ -39,22 +39,25 @@ def download_package(url, path=None, checksum=None):
 
     # Use "ab" to prevent truncation of the file in case it is already being
     # downloaded by a different thread.
-    with open(path, "ab") as f:
+    with open(path, "ab+") as f:
         # Get an exclusive lock. If the file size is != 0 then it's already
         # downloaded, otherwise we download.
         fcntl.flock(f.fileno(), fcntl.LOCK_EX)
         st = os.stat(path)
         if st.st_size != 0:
-            log.debug("Package '{}' already downloaded".format(path))
+            print("Package '{}' already downloaded".format(path))
+
+            f.seek(0)
+            content = f.read()
+            if checksum and is_different_checksum(checksum, content):
+                user_error("Downloaded file '{}' does not match expected checksum '{}'. Please delete the file.".format(filename, checksum))
+
         else:
             print("Downloading package: '{}'".format(path))
 
             answer = urllib.request.urlopen(url).read()
-
-            if checksum:
-                digest = hashlib.sha256(answer).digest().hex()
-                if checksum != digest:
-                    user_error("Downloaded file '{}' does not match expected checksum '{}'".format(filename, checksum))
+            if checksum and is_different_checksum(checksum, answer):
+                user_error("Downloaded file '{}' does not match expected checksum '{}'".format(filename, checksum))
 
             f.write(answer)
             f.flush()

@@ -262,6 +262,11 @@ def _get_arg_parser():
         type=str,
         nargs="?",
     )
+    sp = subp.add_parser("agent", help="Run cf-agent")
+    sp.add_argument(
+        "--hosts", "-H", help="Which hosts to run cf-agent from", type=str, required=True
+    )
+    sp.add_argument("--bootstrap", "-B", help="Which hub to bootstrap to", type=str)
 
     return ap
 
@@ -280,6 +285,9 @@ def run_command_with_args(command, args):
             trust_keys = args.trust_keys.split(",")
         else:
             trust_keys = None
+
+        if not args.bootstrap :
+            log.warning("You did not specify --bootstrap in the install command, so CFEngine has been installed, but not started.\nTo fix this, run:\ncf-remote agent --hosts HOSTS --bootstrap BOOTSTRAP")
 
         return commands.install(
             args.hub,
@@ -367,6 +375,8 @@ def run_command_with_args(command, args):
         return commands.destroy(group_name)
     elif command == "deploy":
         return commands.deploy(args.hub, args.masterfiles)
+    elif command == "agent":
+        return commands.agent(args.hosts, args.bootstrap)
     else:
         user_error("Unknown command: '{}'".format(command))
 

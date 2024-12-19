@@ -886,3 +886,21 @@ def deploy(hubs, masterfiles):
     os.system("rm -rf %s" % tarball)
     os.system("tar -czf %s -C %s masterfiles" % (tarball, above))
     return deploy_tarball(hubs, tarball)
+
+def agent(hosts, bootstrap=None) :
+
+    command = "cf-agent"
+    if bootstrap :
+        command += " --bootstrap {}".format(bootstrap)
+
+    for host in hosts:
+        data = get_info(host)
+
+        if not data["agent_version"] :
+            user_error("CFEngine not installed on {}".format(host))
+
+        output = run_command(host, command, sudo=True)
+        if output :
+            print(output)
+
+    return 0

@@ -300,7 +300,7 @@ def _iterate_over_packages(tags=None, version=None, edition=None, download=False
             if download:
                 package_path= download_package(artifact.url, checksum=artifact.checksum)
                 if output_dir :
-                    output_dir = os.path.normpath(output_dir)
+                    output_dir = os.path.abspath(os.path.expanduser(output_dir))
                     parent = os.path.dirname(output_dir)
                     if not os.path.exists(parent):
                         user_error("'{}' doesn't exist. Make sure this path is correct and exists.".format(parent))

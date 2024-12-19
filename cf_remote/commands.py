@@ -316,7 +316,9 @@ def _iterate_over_packages(
 
                     filename = os.path.basename(artifact.url)
                     output_path = os.path.join(output_dir, filename)
+                    assert artifact.checksum
                     copy_file(package_path, output_path)
+                    print("Copied to '{}' (Checksum OK).".format(output_path))
             else:
                 print(artifact.url)
     return 0

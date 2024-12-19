@@ -70,7 +70,7 @@ def download_package(url, path=None, checksum=None):
             answer = urllib.request.urlopen(url).read()
             if checksum and is_different_checksum(checksum, answer):
                 user_error(
-                    "Downloaded file '{}' does not match expected checksum '{}'".format(
+                    "Downloaded file '{}' does not match expected checksum '{}'. Please delete the file.".format(
                         filename, checksum
                     )
                 )

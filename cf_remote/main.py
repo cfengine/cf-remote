@@ -138,11 +138,7 @@ def _get_arg_parser():
     )
     sp.add_argument("tags", metavar="TAG", nargs="*")
 
-    sp.add_argument("--output-dir",
-                    "-o",
-                    help="Where to download",
-                    type=str
-                    )
+    sp.add_argument("--output-dir", "-o", help="Where to download", type=str)
 
     sp = subp.add_parser(
         "run", help="Run the command given as arguments on the given hosts"
@@ -270,7 +266,11 @@ def _get_arg_parser():
     )
     sp = subp.add_parser("agent", help="Run cf-agent")
     sp.add_argument(
-        "--hosts", "-H", help="Which hosts to run cf-agent from", type=str, required=True
+        "--hosts",
+        "-H",
+        help="Which hosts to run cf-agent from",
+        type=str,
+        required=True,
     )
     sp.add_argument("--bootstrap", "-B", help="Which hub to bootstrap to", type=str)
 
@@ -292,8 +292,10 @@ def run_command_with_args(command, args):
         else:
             trust_keys = None
 
-        if not args.bootstrap :
-            log.warning("You did not specify --bootstrap in the install command, so CFEngine has been installed, but not started.\nTo fix this, run:\ncf-remote agent --hosts HOSTS --bootstrap BOOTSTRAP")
+        if not args.bootstrap:
+            log.warning(
+                "You did not specify --bootstrap in the install command, so CFEngine has been installed, but not started.\nTo fix this, run:\ncf-remote agent --hosts HOSTS --bootstrap BOOTSTRAP"
+            )
 
         return commands.install(
             args.hub,
@@ -325,7 +327,10 @@ def run_command_with_args(command, args):
         )
     elif command == "download":
         return commands.download(
-            tags=args.tags, version=args.version, edition=args.edition, output_dir=args.output_dir
+            tags=args.tags,
+            version=args.version,
+            edition=args.edition,
+            output_dir=args.output_dir,
         )
     elif command == "run":
         return commands.run(hosts=args.hosts, raw=args.raw, command=args.remote_command)

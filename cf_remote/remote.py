@@ -93,13 +93,12 @@ def print_info(data):
         output["CFEngine"] = agent_version
 
         policy_server = data.get("policy_server")
-        if policy_server :
+        if policy_server:
             output["Policy server"] = policy_server
-        else :
+        else:
             output["Policy server"] = "None (not bootstrapped yet)"
     else:
         output["CFEngine"] = "Not installed"
-
 
     binaries = []
     if "bin" in data:
@@ -330,8 +329,15 @@ def uninstall_cfengine(host, data, *, connection=None, purge=False):
         host, "rm -rf /var/cfengine /opt/cfengine", connection=connection, sudo=True
     )
     if purge:
-        run_command(host, "rm -rf /var/log/CFEngine-Install*", connection=connection, sudo=True)
-        run_command(host, "rm -rf /etc/systemd/system/cf-php-fpm.service", connection=connection, sudo=True)
+        run_command(
+            host, "rm -rf /var/log/CFEngine-Install*", connection=connection, sudo=True
+        )
+        run_command(
+            host,
+            "rm -rf /etc/systemd/system/cf-php-fpm.service",
+            connection=connection,
+            sudo=True,
+        )
 
 
 @auto_connect

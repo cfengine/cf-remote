@@ -15,7 +15,11 @@ def cfengine_dir(subdir=None):
         parent = os.path.dirname(override_dir)
 
         if not os.path.exists(parent):
-            user_error("'{}' doesn't exist. Make sure this path is correct and exists.".format(parent))
+            user_error(
+                "'{}' doesn't exist. Make sure this path is correct and exists.".format(
+                    parent
+                )
+            )
 
         return path_append(override_dir, subdir)
 

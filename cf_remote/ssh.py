@@ -49,17 +49,25 @@ class Connection:
         # Create an SSH Control Master process (man:ssh_config(5)) so that
         # commands run on this host can reuse the same SSH connection.
         self._control_path = os.path.join(paths.cf_remote_dir(), "%C")
-        control_master_args = ["ssh", "-M", "-N",
-                               "-oControlPath=%s" % self._control_path,
-                               ]
+        control_master_args = [
+            "ssh",
+            "-M",
+            "-N",
+            "-oControlPath=%s" % self._control_path,
+        ]
         control_master_args.extend(aramid.DEFAULT_SSH_ARGS)
         control_master_args.append("%s@%s" % (user, host))
 
-        self._ssh_control_master = subprocess.Popen(control_master_args) # stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        self._ssh_control_master = subprocess.Popen(
+            control_master_args
+        )  # stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
     def __del__(self):
         # If we have an SSH Control Master running, signal it to terminate.
-        if self._ssh_control_master is not None and self._ssh_control_master.poll() is None:
+        if (
+            self._ssh_control_master is not None
+            and self._ssh_control_master.poll() is None
+        ):
             self._ssh_control_master.send_signal(signal.SIGTERM)
 
     def run(self, command, hide=False):

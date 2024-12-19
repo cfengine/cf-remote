@@ -72,7 +72,7 @@ def read_file(path):
 
 
 def save_file(path, data):
-    try :
+    try:
         if "/" in path:
             mkdir("/".join(path.split("/")[0:-1]))
         with open(path, "w") as f:
@@ -205,19 +205,19 @@ def print_progress_dot(*args):
     print(".", end="")
     sys.stdout.flush()  # STDOUT is line-buffered
 
-    
-def copy_file(input_path, output_path) :
+
+def copy_file(input_path, output_path):
     filename = os.path.basename(input_path)
     output_dir = os.path.dirname(output_path)
 
-    tmp_filename = '.{}.tmp'.format(filename)
+    tmp_filename = ".{}.tmp".format(filename)
     tmp_output_path = os.path.join(output_dir, tmp_filename)
 
-    shutil.copyfile(input_path, tmp_output_path) 
+    shutil.copyfile(input_path, tmp_output_path)
     os.rename(tmp_output_path, output_path)
 
 
-def is_different_checksum(checksum, content) :
+def is_different_checksum(checksum, content):
     assert type(content) == bytes
 
     digest = hashlib.sha256(content).digest().hex()

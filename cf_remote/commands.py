@@ -279,7 +279,9 @@ def install(
     return errors
 
 
-def _iterate_over_packages(tags=None, version=None, edition=None, download=False, output_dir=None):
+def _iterate_over_packages(
+    tags=None, version=None, edition=None, download=False, output_dir=None
+):
     releases = Releases(edition)
     print("Available releases: {}".format(releases))
 
@@ -298,12 +300,18 @@ def _iterate_over_packages(tags=None, version=None, edition=None, download=False
     else:
         for artifact in artifacts:
             if download:
-                package_path= download_package(artifact.url, checksum=artifact.checksum)
-                if output_dir :
+                package_path = download_package(
+                    artifact.url, checksum=artifact.checksum
+                )
+                if output_dir:
                     output_dir = os.path.abspath(os.path.expanduser(output_dir))
                     parent = os.path.dirname(output_dir)
                     if not os.path.exists(parent):
-                        user_error("'{}' doesn't exist. Make sure this path is correct and exists.".format(parent))
+                        user_error(
+                            "'{}' doesn't exist. Make sure this path is correct and exists.".format(
+                                parent
+                            )
+                        )
                     mkdir(output_dir)
 
                     filename = os.path.basename(artifact.url)
@@ -574,8 +582,12 @@ def destroy(group_name=None):
 
 def list_platforms():
     print()
-    print("Platform images are queried based on the platform name, version and architecture.")
-    print("The form of platform specified is: <platform_name>[-<version>][-<architecture>]. e.g. debian, debian-12 or debian-12-x64")
+    print(
+        "Platform images are queried based on the platform name, version and architecture."
+    )
+    print(
+        "The form of platform specified is: <platform_name>[-<version>][-<architecture>]. e.g. debian, debian-12 or debian-12-x64"
+    )
     print("Ubuntu version can be just major (20) or major+minor (20-04)")
     print("Architecture can either be x64 or arm64")
     print()
@@ -748,7 +760,7 @@ def show(ansible_inventory):
             del group["meta"]
             if "region" in meta and "provider" in meta:
                 extra = " in {}, {}".format(meta["region"], meta["provider"])
-            if "date" in meta :
+            if "date" in meta:
                 added = "saved" if "saved" in meta and meta["saved"] else "spawned"
                 extra += ", {} {}".format(added, meta["date"])
         print(
@@ -899,20 +911,21 @@ def deploy(hubs, masterfiles):
     os.system("tar -czf %s -C %s masterfiles" % (tarball, above))
     return deploy_tarball(hubs, tarball)
 
-def agent(hosts, bootstrap=None) :
+
+def agent(hosts, bootstrap=None):
 
     command = "cf-agent"
-    if bootstrap :
+    if bootstrap:
         command += " --bootstrap {}".format(bootstrap)
 
     for host in hosts:
         data = get_info(host)
 
-        if not data["agent_version"] :
+        if not data["agent_version"]:
             user_error("CFEngine not installed on {}".format(host))
 
         output = run_command(host, command, sudo=True)
-        if output :
+        if output:
             print(output)
 
     return 0

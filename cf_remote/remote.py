@@ -217,7 +217,7 @@ def get_info(host, *, users=None, connection=None):
 
         data["package_tags"] = get_package_tags(os_release_data, redhat_release_data)
 
-        data["agent_location"] = ssh_cmd(connection, "which cf-agent")
+        data["agent_location"] = ssh_cmd(connection, "command -v cf-agent")
         data["policy_server"] = ssh_cmd(
             connection, "cat /var/cfengine/policy_server.dat"
         )
@@ -236,7 +236,7 @@ def get_info(host, *, users=None, connection=None):
 
         data["bin"] = {}
         for bin in ["dpkg", "rpm", "yum", "apt", "pkg", "zypper"]:
-            path = ssh_cmd(connection, "which {}".format(bin))
+            path = ssh_cmd(connection, "command -v {}".format(bin))
             if path:
                 data["bin"][bin] = path
 

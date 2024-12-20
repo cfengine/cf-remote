@@ -131,6 +131,7 @@ def connect(host, users=None):
             c.ssh_user = user
             c.ssh_host = host
             c.run("whoami", hide=True)
+            c.has_sudo = c.run("echo $UID", hide=True).stdout.strip() != '0'
             return c
         except aramid.ExecutionError:
             continue
@@ -198,9 +199,12 @@ def ssh_sudo(connection, cmd, errors=False):
     assert connection
 
     log.debug("Running(sudo) over SSH: '%s'" % cmd)
-    escaped = cmd.replace('"', r"\"")
-    sudo_cmd = 'sudo bash -c "%s"' % escaped
-    result = connection.run(sudo_cmd, hide=True)
+    if connection.has_sudo:
+        escaped = cmd.replace('"', r"\"")
+        sudo_cmd = 'sudo bash -c "%s"' % escaped
+        result = connection.run(sudo_cmd, hide=True)
+    else :
+        result = connection.run(cmd, hide=True)
     if result.retcode == 0:
         output = result.stdout.strip("\n")
         log.debug("'%s' -> '%s'" % (cmd, output))

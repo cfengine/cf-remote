@@ -1,5 +1,6 @@
 from cf_remote.spawn import _get_image_criteria
 
+
 def test_get_image_criteria():
     criteria = _get_image_criteria("ubuntu-22-04-x86")
     assert criteria["version"] == "22.04"

@@ -1,0 +1,67 @@
+name: Automatically format with Black and submit PR
+
+on:
+    push:
+        branches:
+          - master
+
+    workflow_dispatch:
+
+jobs:
+  format:
+    runs-on: ubuntu-20.04
+    steps:
+        - name: Checks-out repository
+          uses: actions/checkout@v4
+        - name: Set up Python 3.6cf_remote
+          uses: actions/setup-python@v5
+          with:
+            python-version: "3.6"
+        - name: Install black
+          run: |
+            python -m pip install --upgrade pip
+            python -m pip install black
+        - name: Reformat with black
+          run: |
+            shopt -s globstar
+            black cf_remote/*.py cf_remote/**/*.py tests/*.py tests/**/*.py > black_output.txt 2>&1
+        - name: Check if there are changes
+          run: |
+            git diff --exit-code || touch git_diff_exists
+            if [ -f git_diff_exists ]; then echo "Changes need to be commited"; else echo "No changes to commit"; fi
+        - name: Create commit message
+          if: hashFiles('git_diff_exists') != ''
+          run: |
+            echo "Reformatted python code using Black formatter" >> commit_message.txt
+            echo "" >> commit_message.txt
+            echo "Output from black:" >> commit_message.txt
+            echo "" >> commit_message.txt
+            echo '```' >> commit_message.txt
+            cat black_output.txt >> commit_message.txt
+            echo '```' >> commit_message.txt
+        - name: Commit changes
+          if: hashFiles('git_diff_exists') != ''
+          run: |
+            git config user.name 'GitHub'
+            git config user.email '<noreply@github.com>'
+            shopt -s globstar
+            git add cf_remote/*.py cf_remote/**/*.py tests/*.py tests/**/*.py
+            git commit -F commit_message.txt
+        - id: commit-message-from-file
+          name: Parse commit message from file into variable
+          if: hashFiles('git_diff_exists') != ''
+          run: |
+            body=$(cat commit_message.txt)
+            body="${body//$'\n'/'%0A'}"
+            echo ::set-output name=body::$body
+        - name: Create Pull Request
+          if: hashFiles('git_diff_exists') != ''
+          uses: cfengine/create-pull-request@v6
+          with:
+            title: Reformatted python code using Black formatter
+            body: ${{ steps.commit-message-from-file.outputs.body }}
+            reviewers: |
+              olehermanse
+              larsewi
+              vpodzime
+            branch: formatting-action

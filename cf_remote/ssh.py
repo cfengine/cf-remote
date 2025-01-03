@@ -18,6 +18,7 @@ class LocalConnection:
 
     def __init__(self):
         self.ssh_user = pwd.getpwuid(os.getuid()).pw_name
+        self.needs_sudo = self.run("echo $UID", hide=True).stdout.strip() != "0"
 
     def run(self, command, hide=False):
         # to maintain Python 3.5/3.6 compatability the following are used:
@@ -61,6 +62,8 @@ class Connection:
         self._ssh_control_master = subprocess.Popen(
             control_master_args
         )  # stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+        self.needs_sudo = self.run("echo $UID", hide=True).stdout.strip() != "0"
 
     def __del__(self):
         # If we have an SSH Control Master running, signal it to terminate.
@@ -198,9 +201,12 @@ def ssh_sudo(connection, cmd, errors=False):
     assert connection
 
     log.debug("Running(sudo) over SSH: '%s'" % cmd)
-    escaped = cmd.replace('"', r"\"")
-    sudo_cmd = 'sudo bash -c "%s"' % escaped
-    result = connection.run(sudo_cmd, hide=True)
+    if connection.needs_sudo:
+        escaped = cmd.replace('"', r"\"")
+        sudo_cmd = 'sudo bash -c "%s"' % escaped
+        result = connection.run(sudo_cmd, hide=True)
+    else:
+        result = connection.run(cmd, hide=True)
     if result.retcode == 0:
         output = result.stdout.strip("\n")
         log.debug("'%s' -> '%s'" % (cmd, output))

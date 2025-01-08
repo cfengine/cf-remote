@@ -600,13 +600,23 @@ def deploy_masterfiles(host, tarball, *, connection=None):
         scp(tarball, host, connection=connection, rename="masterfiles.tgz")
         tarball = "masterfiles.tgz"
     ssh_cmd(connection, "tar -xzf %s" % tarball)
+
+    cfagent_path = ""
+    if not ssh_sudo(connection, "command -v cf-agent"):
+        log.debug("cf-agent is not in $PATH")
+
+        if ssh_cmd(connection, "command -v /var/cfengine/bin/cf-agent"):
+            cfagent_path = "/var/cfengine/bin/"
+        else:
+            user_error("Cannot find the path to cf-agent.")
+
     commands = [
         "rm -rf /var/cfengine/masterfiles.delete",
         "mv /var/cfengine/masterfiles /var/cfengine/masterfiles.delete",
         "mv masterfiles /var/cfengine/masterfiles",
         "rm -rf /var/cfengine/masterfiles.delete",
-        "cf-agent -Kf update.cf",
-        "cf-agent -K",
+        "{}cf-agent -Kf update.cf".format(cfagent_path),
+        "{}cf-agent -K".format(cfagent_path),
     ]
     combined = " && ".join(commands)
     print("Running: '%s'" % combined)

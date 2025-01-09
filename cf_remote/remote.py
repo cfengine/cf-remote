@@ -258,8 +258,7 @@ def install_package(host, pkg, data, *, connection=None):
         # sleep is powershell specific,
         # timeout doesn't work over ssh.
         output = ssh_cmd(connection, powershell(r".\{} ; sleep 10".format(pkg)), True)
-    else:
-        # generally this "else" is for rpm packages
+    elif ".rpm" in pkg:
         if "yum" in data["bin"]:
             output = ssh_sudo(connection, "yum -y install {}".format(pkg), True)
         elif "zypper" in data["bin"]:  # suse case
@@ -276,6 +275,12 @@ def install_package(host, pkg, data, *, connection=None):
             log.error(
                 "Don't know how to install rpm package. No yum or zypper in PATH."
             )
+    else:
+        file_extension = pkg.split(".")[-1]
+        if pkg.endswith("tar.gz"):
+            file_extension = "tar.gz"
+        log.error("Don't know how to install {} package.".format(file_extension))
+
     if output is None:
         log.error("Installation failed on '{}'".format(host))
 

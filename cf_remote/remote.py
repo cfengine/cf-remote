@@ -620,6 +620,10 @@ def deploy_masterfiles(host, tarball, *, connection=None):
     ]
     combined = " && ".join(commands)
     print("Running: '%s'" % combined)
-    ssh_sudo(connection, combined)
+    result = ssh_sudo(connection, combined, errors=True)
+
+    if result is None:
+        log.error("Command failed, policy failed to deploy")
+        return 1
     print("Policy set successfully deployed to '%s' 🚀" % host)
     return 0

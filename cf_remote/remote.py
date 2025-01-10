@@ -5,9 +5,12 @@ from os.path import basename
 from collections import OrderedDict
 
 from cf_remote.utils import (
+    error_and_none,
     os_release,
     column_print,
+    parse_envfile,
     pretty,
+    programmer_error,
     user_error,
     parse_systeminfo,
     parse_version,
@@ -205,38 +208,49 @@ def get_info(host, *, users=None, connection=None):
         data["agent_version"] = parse_version(ssh_cmd(connection, version_cmd))
     else:
         data["os"] = "unix"
-        data["uname"] = ssh_cmd(connection, "uname")
-        data["arch"] = ssh_cmd(connection, "uname -m")
-        data["os_release"] = os_release(ssh_cmd(connection, "cat /etc/os-release"))
+
+        scp("nt-discovery.sh", host, connection)
+        discovery = parse_envfile(ssh_sudo(connection, "bash nt-discovery.sh"))
+
+        if discovery is None:
+            programmer_error("Couldn't parse NT discovery file")
+
+        data["uname"] = (
+            discovery.get("NTD_UNAME")
+            if discovery.get("NTD_UNAME")
+            else error_and_none(discovery.get("NTD_UNAME_ERROR"))
+        )
+        data["arch"] = (
+            discovery.get("NTD_ARCH")
+            if discovery.get("NTD_ARCH")
+            else error_and_none(discovery.get("NTD_ARCH_ERROR"))
+        )
+        data["os_release"] = (
+            os_release(discovery.get("NTD_OS_RELEASE"))
+            if discovery.get("NTD_OS_RELEASE")
+            else error_and_none(discovery.get("NTD_OS_RELEASE_ERROR"))
+        )
 
         os_release_data = data.get("os_release")
         redhat_release_data = None
         if not os_release_data:
-            redhat_release_data = ssh_cmd(connection, "cat /etc/redhat-release")
+            redhat_release_data = (
+                discovery.get("NTD_REDHAT_RELEASE")
+                if discovery.get("NTD_REDHAT_RELEASE")
+                else error_and_none(discovery.get("NTD_REDHAT_RELEASE_ERROR"))
+            )
             data["redhat_release"] = redhat_release_data
 
         data["package_tags"] = get_package_tags(os_release_data, redhat_release_data)
-
-        data["agent_location"] = ssh_cmd(connection, "command -v cf-agent")
-        data["policy_server"] = ssh_cmd(
-            connection, "cat /var/cfengine/policy_server.dat"
-        )
-        if user != "root" and not data["policy_server"]:
-            # If we are not SSHing as root and we failed to read
-            # the policy_server.dat file try again using sudo:
-            data["policy_server"] = ssh_sudo(
-                connection, "cat /var/cfengine/policy_server.dat"
-            )
-
+        data["agent_location"] = discovery.get("NTD_CFAGENT_PATH")
+        data["policy_server"] = discovery.get("NTD_POLICY_SERVER")
         agent = r"/var/cfengine/bin/cf-agent"
         data["agent"] = agent
-        data["agent_version"] = parse_version(
-            ssh_cmd(connection, "{} --version".format(agent))
-        )
+        data["agent_version"] = parse_version(discovery.get("NTD_CFAGENT_VERSION"))
 
         data["bin"] = {}
         for bin in ["dpkg", "rpm", "yum", "apt", "pkg", "zypper"]:
-            path = ssh_cmd(connection, "command -v {}".format(bin))
+            path = discovery.get("NTD_{}".format(bin.upper()))
             if path:
                 data["bin"][bin] = path
 

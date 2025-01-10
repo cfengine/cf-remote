@@ -222,3 +222,60 @@ def is_different_checksum(checksum, content):
 
     digest = hashlib.sha256(content).digest().hex()
     return checksum != digest
+
+
+def error_and_none(msg):
+    log.error(msg)
+    return None
+
+
+def parse_envfile(text):
+
+    if not text:
+        return error_and_none("Missing env file")
+
+    data = OrderedDict()
+    lines = text.splitlines()
+    for line in lines:
+        if line.strip() == "":
+            return error_and_none(
+                "Invalid env file format: Empty or whitespace only line"
+            )
+
+        if "=" not in line:
+            return error_and_none("Invalid env file format: '=' missing")
+
+        key, _, val = line.partition("=")
+
+        if not key:
+            return error_and_none("Invalid env file format: Key missing")
+
+        if not re.fullmatch(r"([A-Z]+\_?)+", key):
+            return error_and_none("Invalid env file format: Invalid key")
+
+        if not (val.startswith('"') and val.endswith('"')):
+            return error_and_none(
+                "Invalid env file format: value must start and end with double quotes"
+            )
+
+        val = val[1:-1]  # Remove double quotes on each side
+
+        if has_unescaped_character(val, '"'):
+            return error_and_none("Invalid env file format: quotes not escaped")
+
+        data[key] = val.encode("utf-8").decode("unicode_escape")
+
+    return data
+
+
+def has_unescaped_character(string, char):
+    previous = None
+    for current in string:
+        if current == char and previous != "\\":
+            return True
+        previous = current
+    return False
+
+
+def programmer_error(msg):
+    sys.exit("Programmer error: " + msg)

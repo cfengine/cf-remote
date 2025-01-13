@@ -13,11 +13,6 @@ aws_defaults = {
     "user": "ec2-user",
 }
 aws_image_criteria = {
-    "debian-9": {
-        "owner_id": "379101102735",
-        "name_pattern": "debian-stretch-hvm-x86_64*",
-        "user": "admin",
-    },
     "debian": {
         "owner_id": "136693071363",
         "name_pattern": "debian-{version}*",

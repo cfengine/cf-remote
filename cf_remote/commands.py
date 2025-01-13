@@ -1,5 +1,6 @@
 from datetime import datetime
 import os
+import subprocess
 import sys
 import time
 from multiprocessing.dummy import Pool
@@ -929,5 +930,18 @@ def agent(hosts, bootstrap=None):
         output = run_command(host, command, sudo=True)
         if output:
             print(output)
+
+    return 0
+
+
+def connect_cmd(hosts):
+
+    assert hosts and len(hosts)
+
+    if len(hosts) > 1:
+        user_error("You can only connect to one host at a time")
+
+    print("Opening a SSH command shell...")
+    subprocess.run(["ssh", hosts[0]])
 
     return 0

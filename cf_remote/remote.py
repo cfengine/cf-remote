@@ -209,7 +209,7 @@ def get_info(host, *, users=None, connection=None):
     else:
         data["os"] = "unix"
 
-        scp("nt-discovery.sh", host, connection)
+        scp("nt-discovery.sh", host, connection, hide=True)
         discovery = parse_envfile(ssh_sudo(connection, "bash nt-discovery.sh"))
 
         if discovery is None:

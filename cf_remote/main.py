@@ -274,6 +274,11 @@ def _get_arg_parser():
     )
     sp.add_argument("--bootstrap", "-B", help="Which hub to bootstrap to", type=str)
 
+    sp = subp.add_parser("connect", help="Opens interactive ssh shell")
+    sp.add_argument(
+        "--hosts", "-H", help="Host to open the shell on", type=str, required=True
+    )
+
     return ap
 
 
@@ -388,6 +393,8 @@ def run_command_with_args(command, args):
         return commands.deploy(args.hub, args.masterfiles)
     elif command == "agent":
         return commands.agent(args.hosts, args.bootstrap)
+    elif command == "connect":
+        return commands.connect_cmd(args.hosts)
     else:
         user_error("Unknown command: '{}'".format(command))
 

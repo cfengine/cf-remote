@@ -228,17 +228,13 @@ def get_info(host, *, users=None, connection=None):
         data["os_release"] = (
             os_release(discovery.get("NTD_OS_RELEASE"))
             if discovery.get("NTD_OS_RELEASE")
-            else error_and_none(discovery.get("NTD_OS_RELEASE_ERROR"))
+            else None
         )
 
         os_release_data = data.get("os_release")
         redhat_release_data = None
         if not os_release_data:
-            redhat_release_data = (
-                discovery.get("NTD_REDHAT_RELEASE")
-                if discovery.get("NTD_REDHAT_RELEASE")
-                else error_and_none(discovery.get("NTD_REDHAT_RELEASE_ERROR"))
-            )
+            redhat_release_data = discovery.get("NTD_REDHAT_RELEASE")
             data["redhat_release"] = redhat_release_data
 
         data["package_tags"] = get_package_tags(os_release_data, redhat_release_data)

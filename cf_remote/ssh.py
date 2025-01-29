@@ -87,10 +87,10 @@ class Connection:
         results = aramid.execute([ahost], command, echo=(not hide))
         return results[ahost][0]
 
-    def put(self, src):
+    def put(self, src, hide=False):
         dst = os.path.basename(src)
         ahost = aramid.Host(self.ssh_host, self.ssh_user)
-        results = aramid.put([ahost], src, dst)
+        results = aramid.put([ahost], src, dst, echo=(not hide))
         return results[ahost][0].retcode
 
     def __enter__(self, *args, **kwargs):
@@ -159,19 +159,20 @@ def auto_connect(func):
     return connect_wrapper
 
 
-def scp(file, remote, connection=None, rename=None):
+def scp(file, remote, connection=None, rename=None, hide=False):
     if not connection:
         with connect(remote) as connection:
-            scp(file, remote, connection, rename)
+            scp(file, remote, connection, rename, hide=hide)
     else:
-        print("Copying: '%s' to '%s'" % (file, remote))
-        connection.put(file)
+        print_function = log.debug if hide else print
+        print_function("Copying: '%s' to '%s'" % (file, remote))
+        connection.put(file, hide=hide)
         if rename:
             file = os.path.basename(file)
             if file == rename:
                 return 0
-            print("Renaming '%s' -> '%s' on '%s'" % (file, rename, remote))
-            ssh_cmd(connection, "mv %s %s" % (file, rename))
+            print_function("Renaming '%s' -> '%s' on '%s'" % (file, rename, remote))
+            ssh_cmd(connection, "mv %s %s" % (file, rename), hide=hide)
     return 0
 
 

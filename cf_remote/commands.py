@@ -935,13 +935,20 @@ def agent(hosts, bootstrap=None):
 
 
 def connect_cmd(hosts):
-
-    assert hosts and len(hosts)
+    assert hosts and len(hosts) >= 1  # Ensured by argument parser
 
     if len(hosts) > 1:
         user_error("You can only connect to one host at a time")
 
     print("Opening a SSH command shell...")
-    subprocess.run(["ssh", hosts[0]])
-
-    return 0
+    r = subprocess.run(["ssh", hosts[0]])
+    if r.returncode == 0:
+        return 0
+    if r.returncode < 0:
+        print("")
+        log.error("The ssh command failed with signal " + str(abs(r.returncode)))
+        return abs(r.returncode)
+    assert r.returncode > 0
+    print("")
+    log.error("The ssh command exited with error code " + str(r.returncode))
+    return r.returncode

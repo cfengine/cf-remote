@@ -195,7 +195,6 @@ def get_info(host, *, users=None, connection=None):
     data["ssh_user"] = user
     data["ssh_host"] = host
     data["ssh"] = "{}@{}".format(user, host)
-    data["whoami"] = ssh_cmd(connection, "whoami")
     systeminfo = ssh_cmd(connection, "systeminfo")
     if systeminfo:
         data["os"] = "windows"

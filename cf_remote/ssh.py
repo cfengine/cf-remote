@@ -34,10 +34,12 @@ class LocalConnection:
         result.retcode = result.returncode
         return result
 
-    def put(self, src):
+    def put(self, src, hide=False):
         src = os.path.abspath(src)
         dst = os.path.basename(src)
         if src != dst:
+            if not hide:
+                print("Local copy: '%s' -> '%s'" % (src, dst))
             shutil.copy(src, dst)
 
 

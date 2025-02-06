@@ -297,11 +297,6 @@ def run_command_with_args(command, args):
         else:
             trust_keys = None
 
-        if not args.bootstrap:
-            log.warning(
-                "You did not specify --bootstrap in the install command, so CFEngine has been installed, but not started.\nTo fix this, run:\ncf-remote agent --hosts HOSTS --bootstrap BOOTSTRAP"
-            )
-
         return commands.install(
             args.hub,
             args.clients,

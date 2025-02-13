@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 import sys
 import re
-from os.path import basename
+from os.path import basename, dirname, join, exists
 from collections import OrderedDict
 
 from cf_remote.utils import (
@@ -208,7 +208,16 @@ def get_info(host, *, users=None, connection=None):
     else:
         data["os"] = "unix"
 
-        scp("nt-discovery.sh", host, connection, hide=True)
+        cf_remote_dir = dirname(__file__)
+        script_path = join(cf_remote_dir, "nt-discovery.sh")
+        if not exists(script_path):
+            sys.exit("%s does not exist" % script_path)
+        scp(
+            script_path,
+            host,
+            connection,
+            hide=True,
+        )
         discovery = parse_envfile(ssh_sudo(connection, "bash nt-discovery.sh"))
 
         if discovery is None:
@@ -255,7 +264,6 @@ def get_info(host, *, users=None, connection=None):
 
 @auto_connect
 def install_package(host, pkg, data, *, connection=None):
-
     print("Installing: '{}' on '{}'".format(pkg, host))
     output = None
     if ".deb" in pkg:
@@ -478,7 +486,6 @@ def install_host(
     remote_download=False,
     trust_keys=None
 ):
-
     data = get_info(host, connection=connection)
     if show_info:
         print_info(data)

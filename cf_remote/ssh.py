@@ -31,13 +31,14 @@ class LocalConnection:
             stderr=subprocess.STDOUT,
             shell=True,
             universal_newlines=True,
+            cwd=os.environ["HOME"],
         )
         result.retcode = result.returncode
         return result
 
     def put(self, src, hide=False):
+        dst = os.path.join(os.environ["HOME"], os.path.basename(src))
         src = os.path.abspath(src)
-        dst = os.path.basename(src)
         if src != dst:
             if not hide:
                 print("Local copy: '%s' -> '%s'" % (src, dst))

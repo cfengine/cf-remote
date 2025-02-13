@@ -34,9 +34,8 @@ class LocalConnection:
         result.retcode = result.returncode
         return result
 
-    def put(self, src, hide=False):
+    def put(self, src, dst, hide=False):
         src = os.path.abspath(src)
-        dst = os.path.basename(src)
         if src != dst:
             if not hide:
                 print("Local copy: '%s' -> '%s'" % (src, dst))
@@ -92,8 +91,7 @@ class Connection:
         results = aramid.execute([ahost], command, echo=(not hide))
         return results[ahost][0]
 
-    def put(self, src, hide=False):
-        dst = os.path.basename(src)
+    def put(self, src, dst, hide=False):
         ahost = aramid.Host(self.ssh_host, self.ssh_user)
         results = aramid.put([ahost], src, dst, echo=(not hide))
         return results[ahost][0].retcode
@@ -171,13 +169,13 @@ def scp(file, remote, connection=None, rename=None, hide=False):
     else:
         print_function = log.debug if hide else print
         print_function("Copying: '%s' to '%s'" % (file, remote))
-        connection.put(file, hide=hide)
+        dst = os.path.join("/tmp", os.path.basename(file))
+        connection.put(file, dst, hide=hide)
         if rename:
-            file = os.path.basename(file)
-            if file == rename:
+            if rename == dst:
                 return 0
-            print_function("Renaming '%s' -> '%s' on '%s'" % (file, rename, remote))
-            ssh_cmd(connection, "mv %s %s" % (file, rename), hide=hide)
+            print_function("Renaming '%s' -> '%s' on '%s'" % (rename, dst, remote))
+            ssh_cmd(connection, "mv %s %s" % (rename, dst), hide=hide)
     return 0
 
 

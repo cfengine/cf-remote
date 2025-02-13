@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 import sys
 import re
-from os.path import basename
+from os.path import basename, dirname, join
 from collections import OrderedDict
 
 from cf_remote.utils import (
@@ -208,8 +208,15 @@ def get_info(host, *, users=None, connection=None):
     else:
         data["os"] = "unix"
 
-        scp("nt-discovery.sh", host, connection, hide=True)
-        discovery = parse_envfile(ssh_sudo(connection, "bash nt-discovery.sh"))
+        cf_remote_dir = dirname(__file__)
+        scp(
+            join(cf_remote_dir, "nt-discovery.sh"),
+            host,
+            connection,
+            hide=True,
+            rename="/tmp/nt-discovery.sh",
+        )
+        discovery = parse_envfile(ssh_sudo(connection, "bash /tmp/nt-discovery.sh"))
 
         if discovery is None:
             programmer_error("Couldn't parse NT discovery file")
@@ -255,11 +262,11 @@ def get_info(host, *, users=None, connection=None):
 
 @auto_connect
 def install_package(host, pkg, data, *, connection=None):
-
     print("Installing: '{}' on '{}'".format(pkg, host))
     output = None
+    unix_pkg_path = join("/tmp", pkg)
     if ".deb" in pkg:
-        output = ssh_sudo(connection, 'dpkg -i "{}"'.format(pkg), True)
+        output = ssh_sudo(connection, 'dpkg -i "{}"'.format(unix_pkg_path), True)
     elif ".msi" in pkg:
         # Windows is crazy, be careful if you decide to change this;
         # This needs to work in both powershell and cmd, and in
@@ -269,7 +276,9 @@ def install_package(host, pkg, data, *, connection=None):
         output = ssh_cmd(connection, powershell(r".\{} ; sleep 10".format(pkg)), True)
     elif ".rpm" in pkg:
         if "yum" in data["bin"]:
-            output = ssh_sudo(connection, "yum -y install {}".format(pkg), True)
+            output = ssh_sudo(
+                connection, "yum -y install {}".format(unix_pkg_path), True
+            )
         elif "zypper" in data["bin"]:  # suse case
             allow_unsigned = (
                 ""
@@ -278,7 +287,9 @@ def install_package(host, pkg, data, *, connection=None):
                 else "--allow-unsigned-rpm"
             )
             output = ssh_sudo(
-                connection, "zypper install -y {} {}".format(allow_unsigned, pkg), True
+                connection,
+                "zypper install -y {} {}".format(allow_unsigned, unix_pkg_path),
+                True,
             )
         else:
             log.error(
@@ -478,7 +489,6 @@ def install_host(
     remote_download=False,
     trust_keys=None
 ):
-
     data = get_info(host, connection=connection)
     if show_info:
         print_info(data)

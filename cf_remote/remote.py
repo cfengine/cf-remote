@@ -3,6 +3,7 @@ import sys
 import re
 from os.path import basename, dirname, join
 from collections import OrderedDict
+from pprint import pprint
 
 from cf_remote.utils import (
     error_and_none,
@@ -209,6 +210,7 @@ def get_info(host, *, users=None, connection=None):
         data["os"] = "unix"
 
         cf_remote_dir = dirname(__file__)
+        result = scp(
         scp(
             join(cf_remote_dir, "nt-discovery.sh"),
             host,
@@ -216,6 +218,8 @@ def get_info(host, *, users=None, connection=None):
             hide=True,
             rename="/tmp/nt-discovery.sh",
         )
+        print("CRAIG, scp returned")
+        pprint(result)
         discovery = parse_envfile(ssh_sudo(connection, "bash /tmp/nt-discovery.sh"))
 
         if discovery is None:

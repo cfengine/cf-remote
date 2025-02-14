@@ -4,6 +4,7 @@ import pwd
 import shutil
 import signal
 import subprocess
+from urllib.parse import urlparse
 
 from cf_remote import aramid
 from cf_remote import log
@@ -44,8 +45,14 @@ class LocalConnection:
 
 
 class Connection:
-    def __init__(self, host, user, connect_kwargs=None):
+    def __init__(self, host, user, connect_kwargs=None, port=aramid._DEFAULT_SSH_PORT):
+        log.debug(
+            "Initializing Connection: host '%s' user '%s' port '%s'"
+            % (host, user, port)
+        )
+
         self.ssh_host = host
+        self.ssh_port = port
         self.ssh_user = user
         self._connect_kwargs = connect_kwargs
 
@@ -56,16 +63,22 @@ class Connection:
             "ssh",
             "-M",
             "-N",
+            "-p %s" % self.ssh_port,
             "-oControlPath=%s" % self._control_path,
         ]
         control_master_args.extend(aramid.DEFAULT_SSH_ARGS)
-        control_master_args.append("%s@%s" % (user, host))
+        control_master_args.append("%s@%s" % (self.ssh_user, self.ssh_host))
 
+        log.debug(
+            "Attempting to open SSH Control Master process with command: %s"
+            % " ".join(control_master_args)
+        )
         self._ssh_control_master = subprocess.Popen(
-            control_master_args
+            control_master_args,
         )  # stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
         self.needs_sudo = self.run("echo $UID", hide=True).stdout.strip() != "0"
+        log.debug("Connection initialized")
 
     def __del__(self):
         # If we have an SSH Control Master running, signal it to terminate.
@@ -83,16 +96,17 @@ class Connection:
         # If the Control Master process is running (poll() returns None), let's
         # reuse its connection.
         if self._ssh_control_master.poll() is None:
+            log.debug("Control Master is running, using it")
             extra_ssh_args.extend(["-oControlPath=%s" % self._control_path])
 
-        ahost = aramid.Host(self.ssh_host, self.ssh_user, extra_ssh_args)
+        ahost = aramid.Host(self.ssh_host, self.ssh_user, self.ssh_port, extra_ssh_args)
         results = aramid.execute([ahost], command, echo=(not hide))
         return results[ahost][0]
 
     def put(self, src, hide=False):
         dst = os.path.basename(src)
-        ahost = aramid.Host(self.ssh_host, self.ssh_user)
-        results = aramid.put([ahost], src, dst, echo=(not hide))
+        ahost = aramid.Host(self.ssh_host, self.ssh_user, self.ssh_port)
+        results = aramid.put([ahost], src, dst=dst, echo=(not hide))
         return results[ahost][0].retcode
 
     def __enter__(self, *args, **kwargs):
@@ -105,12 +119,11 @@ class Connection:
 def connect(host, users=None):
     log.debug("Connecting to '%s'" % host)
     log.debug("users= '%s'" % users)
-    if "@" in host:
-        parts = host.split("@")
-        assert len(parts) == 2
-        host = parts[1]
-        if not users:
-            users = [parts[0]]
+    parts = urlparse("ssh://%s" % host)
+    host = parts.hostname
+    if not users:
+        users = [parts.username]
+    port = parts.port or aramid._DEFAULT_SSH_PORT
     if not users:
         users = [
             "Administrator",
@@ -127,14 +140,17 @@ def connect(host, users=None):
             users = [whoami()] + users
     for user in users:
         try:
-            log.debug("Attempting ssh: %s@%s" % (user, host))
+            log.debug("Attempting ssh: %s@%s:%s" % (user, host, port))
             connect_kwargs = {}
             key = os.getenv("CF_REMOTE_SSH_KEY")
             if key:
                 connect_kwargs["key_filename"] = os.path.expanduser(key)
-            c = Connection(host=host, user=user, connect_kwargs=connect_kwargs)
+            c = Connection(
+                host=host, user=user, port=port, connect_kwargs=connect_kwargs
+            )
             c.ssh_user = user
             c.ssh_host = host
+            c.ssh_port = port
             c.run("whoami", hide=True)
             return c
         except aramid.ExecutionError:

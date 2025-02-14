@@ -130,6 +130,7 @@ class _Task:
             raise _TaskError("Failed to communicate with the process") from e
         else:
             if self.proc.returncode == 255:  # SSH error
+                self.stderr += err
                 if self._retries > 0:
                     # wait for the rest of timeout (if any) and restart the process
                     time.sleep(max(timeout - (time.time() - start), 0))
@@ -152,7 +153,10 @@ class _Task:
                             % (self.host.host_name, self._max_retries)
                         )
                     else:
-                        raise _TaskError("SSH failed on '%s'" % self.host.host_name)
+                        raise _TaskError(
+                            "SSH failed on '%s' with error '%s'"
+                            % (self.host.host_name, self.stderr)
+                        )
             else:
                 self.done = True
                 self.stdout += out

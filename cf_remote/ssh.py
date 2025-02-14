@@ -46,6 +46,8 @@ class LocalConnection:
 class Connection:
     def __init__(self, host, user, connect_kwargs=None):
         self.ssh_host = host
+        if ":" in host:
+            port = host.split(":")[-1]
         self.ssh_user = user
         self._connect_kwargs = connect_kwargs
 
@@ -56,10 +58,11 @@ class Connection:
             "ssh",
             "-M",
             "-N",
+            "-p %s" % port,
             "-oControlPath=%s" % self._control_path,
         ]
         control_master_args.extend(aramid.DEFAULT_SSH_ARGS)
-        control_master_args.append("%s@%s" % (user, host))
+        control_master_args.append("%s@%s" % (self.ssh_user, self.ssh_host))
 
         self._ssh_control_master = subprocess.Popen(
             control_master_args

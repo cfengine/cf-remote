@@ -1,1 +1,1 @@
-cf_remote/nt-discovery.sh
+include cf_remote/nt-discovery.sh

@@ -1,7 +1,7 @@
 # This workflow will install Python dependencies, run tests and lint with a variety of Python versions
 # For more information see: https://help.github.com/actions/language-and-framework-guides/using-python-with-github-actions
 
-name: Python tests
+name: Tests
 
 on:
   push:
@@ -10,7 +10,7 @@ on:
     branches: [ master ]
 
 jobs:
-  test:
+  python_version:
     runs-on: ubuntu-20.04
     env:
       # Temporary workaround for Python 3.5 failures - May 2024, see CFE-4395
@@ -48,7 +48,9 @@ jobs:
         pip install dist/cf_remote-*.whl
     - name: Sanity check
       run: cf-remote -V
-# No bash tests yet, see: https://github.com/cfengine/cfbs
-#    - name: Run bash tests
-#      run: |
-#        UNSAFE_TESTS=1 bash test/shell/all.sh
+    - name: Run docker test
+      run: |
+        bash tests/docker/0*.sh
+    - name: Run unsafe tests
+      run: |
+        bash tests/unsafe/0*.sh

@@ -162,7 +162,7 @@ class _Task:
                 self.stdout += out
                 self.stderr += err
                 if self.proc.returncode != 0:
-                    print("Command %s failed with return code %d stderr was %s" % (" ".join(self.proc.args), self.proc.returncode, self.stderr))
+                    print("Command '%s' failed with return code %d stderr was '%s'" % (" ".join(self.proc.args), self.proc.returncode, self.stderr))
                     # TODO maybe we should throw an exception in this case as well?
 
                 return True

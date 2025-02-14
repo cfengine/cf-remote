@@ -428,6 +428,7 @@ def put(
             stderr=subprocess.PIPE,
             universal_newlines=True,
         )
+        print("CRAIG, proc.args %s" % proc.args)
         task = _Task(host, proc, action="{0} -> {1}".format(src, dst))
         host.tasks.append(task)
         tasks.append(task)

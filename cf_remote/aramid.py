@@ -161,9 +161,10 @@ class _Task:
                 self.done = True
                 self.stdout += out
                 self.stderr += err
-                print("CRAIG, self.proc.returncode is %d" % self.proc.returncode)
-                print("CRAIG, command was %s" % self.proc.args)
-                print("CRAIG, aramid, _Task, communicate OK, stdout %s, stderr %s" % (self.stdout, self.stderr))
+                if self.proc.returncode != 0:
+                    print("Command %s failed with return code %d stderr was %s" % (" ".join(self.proc.args), self.proc.returncode, self.stderr))
+                    # TODO maybe we should throw an exception in this case as well?
+
                 return True
 
     def print_output(
@@ -431,7 +432,6 @@ def put(
             stderr=subprocess.PIPE,
             universal_newlines=True,
         )
-        print("CRAIG, proc.args %s" % proc.args)
         task = _Task(host, proc, action="{0} -> {1}".format(src, dst))
         host.tasks.append(task)
         tasks.append(task)

@@ -162,6 +162,7 @@ class _Task:
                 self.stdout += out
                 self.stderr += err
                 print("CRAIG, self.proc.returncode is %d" % self.proc.returncode)
+                print("CRAIG, command was %s" % self.proc.args)
                 print("CRAIG, aramid, _Task, communicate OK, stdout %s, stderr %s" % (self.stdout, self.stderr))
                 return True
 

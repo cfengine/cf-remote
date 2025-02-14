@@ -2,6 +2,7 @@
 import sys
 import re
 from os.path import basename, dirname, join
+from os import stat
 from collections import OrderedDict
 from pprint import pprint
 
@@ -210,8 +211,10 @@ def get_info(host, *, users=None, connection=None):
         data["os"] = "unix"
 
         cf_remote_dir = dirname(__file__)
+        script_path = join(cf_remote_dir, "nt-discovery.sh")
+        stat(script_path)
         result = scp(
-            join(cf_remote_dir, "nt-discovery.sh"),
+            script_path,
             host,
             connection,
             hide=True,

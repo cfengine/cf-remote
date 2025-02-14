@@ -7,7 +7,8 @@ Commands for provisioning hosts in the cloud (AWS or GCP) are also available.
 ## Requirements
 
 cf-remote requires python 3.6 or greater.
-SSH must already be configured and running on the remote host.
+SSH must be configured in such a way that cf-remote can login without a password.
+An sftp server for transferring files on UNIX hosts. e.g. openssh-sftp-server for debian-based distributions.
 
 ## Installation
 
@@ -22,6 +23,7 @@ $ pip3 install cf-remote
 ### See information about remote host
 
 The `info` command can be used to check basic information about a system.
+The --hosts/-H option accepts [user@]hostname[:port] for the hostname.
 
 ```
 $ cf-remote info -H 34.241.203.218

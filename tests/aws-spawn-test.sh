@@ -60,3 +60,4 @@ done
 for version in 16-04 18-04 20-04 22-04; do
   test ubuntu "$version"
 done
+test alpine

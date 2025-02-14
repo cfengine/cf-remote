@@ -6,9 +6,6 @@ error () {
 }
 trap error ERR
 
-# debug github environment
-ls -l /opt/hostedtoolcache/Python/3.5.10/x64/lib/python3.5/site-packages/cf_remote
-stat /opt/hostedtoolcache/Python/3.5.10/x64/lib/python3.5/site-packages/cf_remote/nt-discovery.sh
 dir=$(dirname "$0")
 name=cf-remote-debian-test-host
 

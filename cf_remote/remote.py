@@ -211,7 +211,6 @@ def get_info(host, *, users=None, connection=None):
 
         cf_remote_dir = dirname(__file__)
         result = scp(
-        scp(
             join(cf_remote_dir, "nt-discovery.sh"),
             host,
             connection,

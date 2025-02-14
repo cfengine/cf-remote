@@ -161,6 +161,7 @@ class _Task:
                 self.done = True
                 self.stdout += out
                 self.stderr += err
+                print("CRAIG, aramid, _Task, communicate OK, stdout %s, stderr %s" % (self.stdout, self.stderr))
                 return True
 
     def print_output(

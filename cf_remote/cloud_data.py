@@ -18,6 +18,21 @@ aws_image_criteria = {
         "name_pattern": "debian-{version}*",
         "user": "admin",
     },
+    "alpine": {
+        "owner_id": "538276064493",
+        "name_pattern": "alpine-{version}-*",
+        "user": "alpine",
+        "sizes": {
+            "x86_64": {
+                "size": "t3.micro",
+                "xlsize": "t3.xlarge",
+            },
+            "arm64": {
+                "size": "t4g.micro",
+                "xlsize": "t4g.xlarge",
+            },
+        },
+    },
     "ubuntu-16": {
         "owner_id": "099720109477",
         "name_pattern": "ubuntu-pro-server/images/hvm-ssd/ubuntu-xenial-16.04-amd64-pro-server*",

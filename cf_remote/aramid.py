@@ -27,6 +27,7 @@ from enum import Enum
 from collections import namedtuple
 import subprocess
 import time
+from urllib.parse import urlparse
 
 DEFAULT_SSH_ARGS = [
     "-oLogLevel=ERROR",
@@ -130,6 +131,7 @@ class _Task:
             raise _TaskError("Failed to communicate with the process") from e
         else:
             if self.proc.returncode == 255:  # SSH error
+                self.stderr += err
                 if self._retries > 0:
                     # wait for the rest of timeout (if any) and restart the process
                     time.sleep(max(timeout - (time.time() - start), 0))
@@ -152,7 +154,10 @@ class _Task:
                             % (self.host.host_name, self._max_retries)
                         )
                     else:
-                        raise _TaskError("SSH failed on '%s'" % self.host.host_name)
+                        raise _TaskError(
+                            "SSH failed on '%s' with error '%s'"
+                            % (self.host.host_name, self.stderr)
+                        )
             else:
                 self.done = True
                 self.stdout += out
@@ -191,7 +196,9 @@ class _Task:
 class Host:
     """A remote host to execute commands on or copy files to"""
 
-    def __init__(self, host_name, user="root", extra_ssh_args=None):
+    def __init__(
+        self, host_name, user="root", port=_DEFAULT_SSH_PORT, extra_ssh_args=None
+    ):
         """
         :param str host_name: host name or IP of the host
         :param str user: user name to use to login to the host
@@ -199,14 +206,10 @@ class Host:
                                connection to the host
 
         """
-        if ":" in host_name:
-            host_name, port = host_name.split(":")
-            self.host_name = host_name
-            self.port = int(port)
-        else:
-            self.host_name = host_name
-            self.port = _DEFAULT_SSH_PORT
-        self.user = user
+        parts = urlparse("ssh://%s" % host_name)
+        self.user = user or parts.username
+        self.port = port or parts.port
+        self.host_name = parts.hostname
         self.extra_ssh_args = extra_ssh_args or []
 
         self.tasks = []

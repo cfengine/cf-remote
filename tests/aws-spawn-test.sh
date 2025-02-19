@@ -10,7 +10,7 @@ trap cleanup EXIT
 
 # this is a fairly exhaustive test and will take some time
 # spawn all reasonable "platform" specifications
-function test() {
+function test_spawn() {
   platform=$1
   version=$2
 
@@ -46,17 +46,18 @@ for platform in debian rhel windows debian-9 ubuntu-22 centos-7 rhel-9 windows-2
   cleanup
 done
 for version in 9 10 11 12; do
-  test debian $version
+  test_spawn debian $version
 done
 for version in 7 8; do
-  test centos $version
+  test_spawn centos $version
 done
 for version in 7 8 9; do
-  test rhel $version
+  test_spawn rhel $version
 done
 for version in 2008 2012 2016 2019 2022; do
-  test windows $version
+  test_spawn windows $version
 done
 for version in 16-04 18-04 20-04 22-04; do
-  test ubuntu "$version"
+  test_spawn ubuntu "$version"
 done
+test_spawn alpine

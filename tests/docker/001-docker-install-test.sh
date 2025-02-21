@@ -22,6 +22,8 @@ echo "ssh returned exit code $?"
 echo "=== cf-remote info ===" | tee -a log
 cf-remote --log-level DEBUG info -H root@"$ip_addr":8822 2>&1 | tee -a log
 echo "cf-remote info got return code $?"
+cf-remote --log-level DEBUG info -H "$ip_addr":8822 2>&1 | tee -a log
+echo "cf-remote info got return code $?"
 echo "=== cf-remote install ===" | tee -a log
 cf-remote --log-level DEBUG install --clients root@"$ip_addr":8822 2>&1 | tee -a log
 ssh -o StrictHostKeyChecking=no -p 8822 root@"$ip_addr" cf-agent -V >>log 2>&1

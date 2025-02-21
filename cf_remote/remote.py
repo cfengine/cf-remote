@@ -218,7 +218,9 @@ def get_info(host, *, users=None, connection=None):
             connection,
             hide=True,
         )
-        discovery = parse_envfile(ssh_sudo(connection, "bash nt-discovery.sh"))
+        discovery = parse_envfile(
+            ssh_sudo(connection, "bash nt-discovery.sh", errors=True)
+        )
 
         if discovery is None:
             programmer_error("Couldn't parse NT discovery file")

@@ -122,7 +122,7 @@ def connect(host, users=None):
     log.debug("users= '%s'" % users)
     parts = urlparse("ssh://%s" % host)
     host = parts.hostname
-    if not users:
+    if not users and parts.username:
         users = [parts.username]
     port = parts.port or aramid._DEFAULT_SSH_PORT
     if not users:

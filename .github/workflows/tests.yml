@@ -5,52 +5,88 @@ name: Tests
 
 on:
   push:
-    branches: [ master ]
+    branches: [master]
   pull_request:
-    branches: [ master ]
+    branches: [master]
 
 jobs:
-  python_version:
-    runs-on: ubuntu-20.04
+  test:
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12", "3.13"]
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install flake8 pytest setuptools wheel
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+      - name: Lint with flake8
+        run: |
+          # stop the build if there are Python syntax errors or undefined names
+          flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+          # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
+          flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+      - name: Test with pytest
+        run: |
+          pytest
+      - name: Install
+        run: |
+          python setup.py sdist bdist_wheel
+          pip install dist/cf_remote-*.whl
+      - name: Sanity check
+        run: cf-remote -V
+      - name: Run docker test
+        run: |
+          bash tests/docker/0*.sh
+      - name: Run unsafe tests
+        run: |
+          bash tests/unsafe/0*.sh
+  test-legacy:
+    runs-on: ubuntu-24.04
     env:
       # Temporary workaround for Python 3.5 failures - May 2024, see CFE-4395
       PIP_TRUSTED_HOST: "pypi.python.org pypi.org files.pythonhosted.org"
     strategy:
       fail-fast: false
       matrix:
-        python-version: [3.5, 3.6, 3.7, 3.8, 3.9]
+        python-version: ["3.5.10", "3.6.15", "3.7.10"]
 
     steps:
-    - uses: actions/checkout@v3
-      with:
-        fetch-depth: 0
-    - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v5
-      with:
-        python-version: ${{ matrix.python-version }}
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        python -m pip install flake8 pytest setuptools wheel
-        if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-    - name: Lint with flake8
-      run: |
-        # stop the build if there are Python syntax errors or undefined names
-        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
-        # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
-        flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
-    - name: Test with pytest
-      run: |
-        pytest
-    - name: Install
-      run: |
-        python setup.py sdist bdist_wheel
-        pip install dist/cf_remote-*.whl
-    - name: Sanity check
-      run: cf-remote -V
-    - name: Run docker test
-      run: |
-        bash tests/docker/0*.sh
-    - name: Run unsafe tests
-      run: |
-        bash tests/unsafe/0*.sh
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Set up legacy Python ${{ matrix.python-version }}
+        uses: ./.github/actions/set-up-legacy-python
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Lint with flake8
+        run: |
+          # stop the build if there are Python syntax errors or undefined names
+          flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+          # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
+          flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+      - name: Test with pytest
+        run: |
+          pytest
+      - name: Install
+        run: |
+          python setup.py sdist bdist_wheel
+          pip install dist/cf_remote-*.whl
+      - name: Sanity check
+        run: cf-remote -V
+      - name: Run docker test
+        run: |
+          bash tests/docker/0*.sh
+      - name: Run unsafe tests
+        run: |
+          bash tests/unsafe/0*.sh

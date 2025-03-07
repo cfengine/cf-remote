@@ -1,0 +1,27 @@
+name: "Set up legacy Python"
+description: "Sets up a specified Python version in a virtual environment using `pyenv`, installs dependencies, and caches the environment"
+inputs:
+  python-version:
+    required: true
+    description: "The Python version to set up"
+
+runs:
+  using: "composite"
+  steps:
+    - uses: actions/cache@v4
+      id: pyenv-cache
+      with:
+        path: |
+          /opt/hostedtoolcache/pyenv_root/2.4.20/x64/versions/${{ inputs.python-version }}
+        key: ${{ inputs.python-version }}-${{ hashFiles('requirements.txt') }}
+    - name: Set up Python ${{ inputs.python-version }} using pyenv
+      uses: gabrielfalcao/pyenv-action@32ef4d2c861170ce17ded56d10329d83f4c8f797
+      if: steps.pyenv-cache.outputs.cache-hit != 'true'
+      with:
+        default: "${{ inputs.python-version }}"
+        command: pip install -U pip
+    - name: Install dependencies
+      run: |
+        python -m pip install flake8 pytest setuptools wheel
+        if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+      shell: bash

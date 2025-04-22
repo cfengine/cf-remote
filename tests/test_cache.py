@@ -11,7 +11,6 @@ def _add_x_y(x=0, y=0):
 
 
 def test_cache():
-    global _calls
     assert _calls == 0
 
     assert _add_x_y(2, 3) == 5

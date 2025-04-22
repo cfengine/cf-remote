@@ -12,7 +12,6 @@ def set_level(lvl):
 
 def log(msg, lvl):
     lvl = lvl.upper()
-    global level
     if levels[lvl] >= level:
         print("[{}] {}".format(lvl, msg))
 

@@ -286,8 +286,16 @@ def _iterate_over_packages(
     releases = Releases(edition)
     print("Available releases: {}".format(releases))
 
-    if version and version not in [rel.version for rel in releases.releases]:
+    release_versions = [rel.version for rel in releases.releases]
+    if version and version not in release_versions:
         user_error("CFEngine version '%s' doesn't exist (yet)." % version)
+
+    if not version:
+        for tag in tags:
+            if tag in release_versions:
+                version = tag
+                tags.remove(tag)
+                break
 
     release = releases.default
     if version:

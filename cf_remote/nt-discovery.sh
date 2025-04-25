@@ -22,16 +22,23 @@ run_command() {
 }
 
 cf_path() {
-  # $1: cf program
+  # $1 = path to cf program
+  # we check if path exists with command -v to locate executables associated with a command
   ppath=$(command -v $1)
 
-  if [ -z "$ppath" ]; then
-    ppath=$(command -v /var/cfengine/bin/$1)
-  else
-    # $1 is installed somewhere else and is not in $PATH
-    ppath="$1"
+  if [ -n "$ppath" ]; then
+    echo "$1"
+    return 0;
   fi
-  echo "$ppath"
+  # $1 is installed somewhere else and is not in $PATH
+  ppath=$(command -v /var/cfengine/bin/$1)
+  
+  if [ -n "$ppath" ]; then
+    echo "/var/cfengine/bin/$1"
+    return 0;
+  fi
+  # couldn't locate $1, function fails
+  return 1;
 }
 
 run_command "uname" "UNAME"
@@ -41,11 +48,16 @@ run_command "cat /etc/redhat-release" "REDHAT_RELEASE"
 
 # cf-agent
 
-cfagent_path=$(echo $cf_path "cf-agent")
+cfagent_path=$(cf_path "cf-agent")
 
 run_command "command -v $cfagent_path" "CFAGENT_PATH" "Cannot find cf-agent"
 run_command "$cfagent_path --version" "CFAGENT_VERSION" 
 run_command "cat /var/cfengine/policy_server.dat" "POLICY_SERVER"
+
+# cf-hub
+
+cfhub_path=$(cf_path "cf-hub")
+run_command "$cfhub_path --version" "CFHUB" "Cannot find cf-hub"
 
 # packages
 

@@ -486,7 +486,7 @@ def install_host(
     edition=None,
     show_info=True,
     remote_download=False,
-    trust_keys=None
+    trust_keys=None,
 ):
     data = get_info(host, connection=connection)
     if show_info:

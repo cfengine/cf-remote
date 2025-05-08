@@ -51,4 +51,5 @@ run_command "command -v yum" "YUM" "Cannot find yum"
 run_command "command -v apt" "APT" "Cannot find apt"
 run_command "command -v pkg" "PKG" "Cannot find pkg"
 run_command "command -v zypper" "ZYPPER" "Cannot find zypper"
+run_command "command -v curl" "CURL" "Cannot find curl"
 

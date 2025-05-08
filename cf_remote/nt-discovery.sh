@@ -41,6 +41,7 @@ fi
 run_command "command -v $cfagent_path" "CFAGENT_PATH" "Cannot find cf-agent"
 run_command "$cfagent_path --version" "CFAGENT_VERSION" 
 run_command "cat /var/cfengine/policy_server.dat" "POLICY_SERVER"
+run_command "cf-hub --version" "CFHUB"
 
 # packages
 

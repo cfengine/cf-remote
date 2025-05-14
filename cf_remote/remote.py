@@ -103,12 +103,17 @@ def print_info(data):
     else:
         output["CFEngine"] = "Not installed"
 
+    privat_ip = data.get("private_ip")
+    if privat_ip:
+        output["Private IP"] = privat_ip
+
     binaries = []
     if "bin" in data:
         for key in data["bin"]:
             binaries.append(key)
     if binaries:
         output["Binaries"] = ", ".join(binaries)
+
 
     column_print(output)
     print()
@@ -259,6 +264,9 @@ def get_info(host, *, users=None, connection=None):
             path = discovery.get("NTD_{}".format(bin.upper()))
             if path:
                 data["bin"][bin] = path
+
+        if "NTD_PRIVATE_IP" in discovery:
+            data["private_ip"] = discovery["NTD_PRIVATE_IP"]
 
     log.debug("JSON data from host info: \n" + pretty(data))
     return data

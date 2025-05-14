@@ -21,6 +21,19 @@ run_command() {
   fi	
 }
 
+cf_path() {
+  # $1: cf program
+  ppath=$(command -v $1)
+
+  if [ -z "$ppath" ]; then
+    ppath=$(command -v /var/cfengine/bin/$1)
+  else
+    # $1 is installed somewhere else and is not in $PATH
+    ppath="$1"
+  fi
+  echo "$ppath"
+}
+
 run_command "uname" "UNAME"
 run_command "uname -m" "ARCH"
 run_command "cat /etc/os-release" "OS_RELEASE"
@@ -28,15 +41,7 @@ run_command "cat /etc/redhat-release" "REDHAT_RELEASE"
 
 # cf-agent
 
-cfagent_path=$(command -v cf-agent)
-
-if ! [ $? -eq "0" ]; then
-  cfagent_path=$(command -v /var/cfengine/bin/cf-agent)
-
-  if   ! [ $? -eq "0" ]; then
-    cfagent_path="cf-agent"
-  fi
-fi
+cfagent_path=$(echo $cf_path "cf-agent")
 
 run_command "command -v $cfagent_path" "CFAGENT_PATH" "Cannot find cf-agent"
 run_command "$cfagent_path --version" "CFAGENT_VERSION" 

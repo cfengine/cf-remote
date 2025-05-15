@@ -26,6 +26,10 @@ run_command "uname -m" "ARCH"
 run_command "cat /etc/os-release" "OS_RELEASE"
 run_command "cat /etc/redhat-release" "REDHAT_RELEASE"
 
+# cf-key
+
+run_command "cf-key -p" "CFENGINE_ID" "Couldn't run cf-key"
+
 # cf-agent
 
 cfagent_path=$(command -v cf-agent)

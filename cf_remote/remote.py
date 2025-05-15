@@ -255,7 +255,7 @@ def get_info(host, *, users=None, connection=None):
         data["agent_version"] = parse_version(discovery.get("NTD_CFAGENT_VERSION"))
 
         data["bin"] = {}
-        for bin in ["dpkg", "rpm", "yum", "apt", "pkg", "zypper"]:
+        for bin in ["dpkg", "rpm", "yum", "apt", "pkg", "zypper", "curl"]:
             path = discovery.get("NTD_{}".format(bin.upper()))
             if path:
                 data["bin"][bin] = path
@@ -515,6 +515,12 @@ def install_host(
         return 1
 
     if remote_download:
+        if ("bin" not in data) or ("curl" not in data["bin"]):
+            log.error(
+                "Couldn't download remotely. Curl is not installed on host '%s'" % host
+            )
+            return 1
+
         print("Downloading '%s' on '%s' using curl" % (package, host))
         r = ssh_cmd(
             cmd="curl --fail -O {}".format(package), connection=connection, errors=True

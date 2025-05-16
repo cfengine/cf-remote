@@ -91,9 +91,10 @@ def print_info(data):
     if "arch" in data:
         output["Architecture"] = data["arch"]
 
-    agent_version = data["agent_version"]
-    if agent_version:
-        output["CFEngine"] = agent_version
+    role = data["role"]
+    if data["agent_version"]:
+        version, edition = data["agent_version"].split()
+        output["CFEngine"] = "{} ({} {})".format(version, edition.strip("()"), role)
 
         policy_server = data.get("policy_server")
         if policy_server:
@@ -253,6 +254,7 @@ def get_info(host, *, users=None, connection=None):
         agent = r"/var/cfengine/bin/cf-agent"
         data["agent"] = agent
         data["agent_version"] = parse_version(discovery.get("NTD_CFAGENT_VERSION"))
+        data["role"] = "hub" if discovery.get("NTD_CFHUB") else "client"
 
         data["bin"] = {}
         for bin in ["dpkg", "rpm", "yum", "apt", "pkg", "zypper", "curl"]:

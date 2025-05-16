@@ -111,8 +111,7 @@ def _download_urls(urls):
             paths.append(package_url)
             continue
 
-        if not os.path.isdir(urls_dir):
-            os.mkdir(urls_dir)
+        os.makedirs(urls_dir, exist_ok=True)
 
         # separate name from url and construct path for downloaded file
         url, name = package_url, get_package_name(package_url)

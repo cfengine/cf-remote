@@ -97,7 +97,7 @@ def print_info(data):
 
         policy_server = data.get("policy_server")
         if policy_server:
-            output["Policy server"] = policy_server
+            output["Policy server"] = policy_server.strip("[]")
         else:
             output["Policy server"] = "None (not bootstrapped yet)"
     else:

@@ -183,14 +183,15 @@ def scp(file, remote, connection=None, rename=None, hide=False):
         with connect(remote) as connection:
             scp(file, remote, connection, rename, hide=hide)
     else:
-        print_function = log.debug if hide else print
-        print_function("Copying: '%s' to '%s'" % (file, remote))
+        if not hide:
+            print("Copying: '%s' to '%s'" % (file, remote))
         connection.put(file, hide=hide)
         if rename:
             file = os.path.basename(file)
             if file == rename:
                 return 0
-            print_function("Renaming '%s' -> '%s' on '%s'" % (file, rename, remote))
+            if not hide:
+                print("Renaming '%s' -> '%s' on '%s'" % (file, rename, remote))
             ssh_cmd(connection, "mv %s %s" % (file, rename), hide=hide)
     return 0
 
@@ -198,7 +199,6 @@ def scp(file, remote, connection=None, rename=None, hide=False):
 def ssh_cmd(connection, cmd, errors=False):
     assert connection
 
-    log.debug("Running over SSH: '%s'" % cmd)
     result = connection.run(cmd, hide=True)
     if result.retcode == 0:
         output = result.stdout.replace("\r\n", "\n").strip("\n")
@@ -220,7 +220,6 @@ def ssh_cmd(connection, cmd, errors=False):
 def ssh_sudo(connection, cmd, errors=False):
     assert connection
 
-    log.debug("Running(sudo) over SSH: '%s'" % cmd)
     if connection.needs_sudo:
         escaped = cmd.replace('"', r"\"")
         sudo_cmd = 'sudo bash -c "%s"' % escaped

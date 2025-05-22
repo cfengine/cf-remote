@@ -101,6 +101,12 @@ def print_info(data):
             output["Policy server"] = policy_server.strip("[]")
         else:
             output["Policy server"] = "None (not bootstrapped yet)"
+
+        cfengine_id = data.get("cfengine_id")
+        if cfengine_id:
+            output["CFEngine ID"] = cfengine_id
+        else:
+            output["CFEngine ID"] = "None (no key generated yet)"
     else:
         output["CFEngine"] = "Not installed"
 
@@ -253,6 +259,7 @@ def get_info(host, *, users=None, connection=None):
             data["redhat_release"] = redhat_release_data
 
         data["package_tags"] = get_package_tags(os_release_data, redhat_release_data)
+        data["cfengine_id"] = discovery.get("NTD_CFENGINE_ID")
         data["agent_location"] = discovery.get("NTD_CFAGENT_PATH")
         data["policy_server"] = discovery.get("NTD_POLICY_SERVER")
         agent = r"/var/cfengine/bin/cf-agent"

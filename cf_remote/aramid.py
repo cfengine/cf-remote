@@ -28,6 +28,7 @@ from collections import namedtuple
 import subprocess
 import time
 from urllib.parse import urlparse
+from cf_remote import log
 
 DEFAULT_SSH_ARGS = [
     "-oLogLevel=ERROR",
@@ -126,6 +127,7 @@ class _Task:
         try:
             out, err = self.proc.communicate(timeout=timeout)
         except subprocess.TimeoutExpired:
+            log.debug("Connection timed out")
             return False
         except Exception as e:
             raise _TaskError("Failed to communicate with the process") from e
@@ -245,7 +247,16 @@ def _hosts_to_host_specs(hosts):
 def _wait_for_tasks(hosts, tasks, ignore_failed, echo, echo_action, out_flag=""):
     while not all(task.done for task in tasks):
         for task in (t for t in tasks if not t.done):
-            # TODO: add logging here
+
+            if task.proc.args[0] == "scp":
+                log.debug(
+                    f"Copying '{task.action}' to {task.host.user}@{task.host.host_name} over scp"
+                )
+            else:
+                log.debug(
+                    f"Running '{task.action}' on {task.host.user}@{task.host.host_name} over {task.proc.args[0]}"
+                )
+
             try:
                 task.communicate(ignore_failed=ignore_failed)
             except _TaskError as e:

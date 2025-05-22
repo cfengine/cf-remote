@@ -12,10 +12,22 @@ Commands for provisioning hosts in the cloud (AWS or GCP) are also available.
 
 ## Installation
 
-Install with pip3:
+Install with [pipx](https://pipx.pypa.io/):
 
+```bash
+pipx install cf-remote
 ```
-$ pip3 install cf-remote
+
+Or pip3:
+
+```bash
+pip3 install cf-remote
+```
+
+Or pip:
+
+```bash
+pip install cf-remote
 ```
 
 ## Examples
@@ -109,7 +121,7 @@ Waiting for VMs to get IP addresses..........DONE
 Details about the spawned VMs can be found in /home/olehermanse/.cfengine/cf-remote/cloud_state.json
 ```
 
-You can now install nightlies, and use the ```--demo``` to make testing easier (**Not** secure for production use).
+You can now install nightlies, and use the `--demo` to make testing easier (**Not** secure for production use).
 Referring to the group names set by spawn, makes the commands a lot shorter and easier to script:
 
 ```

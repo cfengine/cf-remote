@@ -70,3 +70,6 @@ run_command "command -v pkg" "PKG" "Cannot find pkg"
 run_command "command -v zypper" "ZYPPER" "Cannot find zypper"
 run_command "command -v curl" "CURL" "Cannot find curl"
 
+# ip
+
+run_command "hostname -I" "PRIVATE_IP"

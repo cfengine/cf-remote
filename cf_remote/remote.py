@@ -98,11 +98,15 @@ def print_info(data):
 
         policy_server = data.get("policy_server")
         if policy_server:
-            output["Policy server"] = policy_server
+            output["Policy server"] = policy_server.strip("[]")
         else:
             output["Policy server"] = "None (not bootstrapped yet)"
     else:
         output["CFEngine"] = "Not installed"
+
+    private_ip = data.get("private_ip")
+    if private_ip:
+        output["Private IP"] = private_ip
 
     binaries = []
     if "bin" in data:
@@ -261,6 +265,9 @@ def get_info(host, *, users=None, connection=None):
             path = discovery.get("NTD_{}".format(bin.upper()))
             if path:
                 data["bin"][bin] = path
+
+        if "NTD_PRIVATE_IP" in discovery:
+            data["private_ip"] = discovery["NTD_PRIVATE_IP"]
 
     log.debug("JSON data from host info: \n" + pretty(data))
     return data

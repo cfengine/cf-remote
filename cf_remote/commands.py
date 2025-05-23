@@ -33,7 +33,12 @@ from cf_remote.utils import (
     get_package_name,
     user_error,
 )
-from cf_remote.utils import user_error, is_package_url, print_progress_dot
+from cf_remote.utils import (
+    user_error,
+    is_package_url,
+    print_progress_dot,
+    ChecksumError,
+)
 from cf_remote.spawn import VM, VMRequest, Providers, AWSCredentials, GCPCredentials
 from cf_remote.spawn import spawn_vms, destroy_vms, dump_vms_info, get_cloud_driver
 from cf_remote import log
@@ -227,8 +232,13 @@ def install(
     errors = 0
     if hub_jobs:
         with Pool(len(hub_jobs)) as hubs_install_pool:
-            hubs_install_pool.map(lambda job: job.run(), hub_jobs)
-        errors = sum(job.errors for job in hub_jobs)
+            try:
+                hubs_install_pool.map(lambda job: job.run(), hub_jobs)
+                errors = sum(job.errors for job in hub_jobs)
+            except ChecksumError as err:
+                hubs_install_pool.terminate()
+                hubs_install_pool.join()
+                user_error(str(err))
 
     if errors > 0:
         s = "s" if errors > 1 else ""

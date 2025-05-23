@@ -14,6 +14,7 @@ from cf_remote.utils import (
     user_error,
     parse_systeminfo,
     parse_version,
+    ChecksumError,
 )
 from cf_remote.ssh import ssh_sudo, ssh_cmd, scp, auto_connect
 from cf_remote import log
@@ -515,16 +516,20 @@ def install_host(
         package = packages[0]
 
     if not package:
-        package = get_package_from_host_info(
-            data.get("package_tags"),
-            data.get("bin"),
-            data.get("arch"),
-            version,
-            hub,
-            edition,
-            packages,
-            remote_download,
-        )
+        try:
+            package = get_package_from_host_info(
+                data.get("package_tags"),
+                data.get("bin"),
+                data.get("arch"),
+                version,
+                hub,
+                edition,
+                packages,
+                remote_download,
+            )
+        except ChecksumError as ce:
+            log.error(ce)
+            return 1
 
     if not package:
         log.error("Installation failed - no package found!")

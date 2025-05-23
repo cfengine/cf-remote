@@ -33,7 +33,12 @@ from cf_remote.utils import (
     get_package_name,
     user_error,
 )
-from cf_remote.utils import user_error, is_package_url, print_progress_dot
+from cf_remote.utils import (
+    user_error,
+    is_package_url,
+    print_progress_dot,
+    ChecksumError,
+)
 from cf_remote.spawn import VM, VMRequest, Providers, AWSCredentials, GCPCredentials
 from cf_remote.spawn import spawn_vms, destroy_vms, dump_vms_info, get_cloud_driver
 from cf_remote import log
@@ -180,7 +185,11 @@ def install(
     if remote_download:
         package, hub_package, client_package = _verify_package_urls(packages)
     else:
-        package, hub_package, client_package = _download_urls(packages)
+        try:
+            package, hub_package, client_package = _download_urls(packages)
+        except ChecksumError as ce:
+            log.error(ce)
+            return 1
 
     # If any of these are folders, transform them to lists of the files inside those folders:
     package = _maybe_packages_in_folder(package)
@@ -308,9 +317,13 @@ def _iterate_over_packages(
     else:
         for artifact in artifacts:
             if download:
-                package_path = download_package(
-                    artifact.url, checksum=artifact.checksum
-                )
+                try:
+                    package_path = download_package(
+                        artifact.url, checksum=artifact.checksum
+                    )
+                except ChecksumError as ce:
+                    log.error(ce)
+                    return 1
                 if output_dir:
                     output_dir = os.path.abspath(os.path.expanduser(output_dir))
                     parent = os.path.dirname(output_dir)
@@ -854,7 +867,11 @@ def deploy(hubs, masterfiles):
         print("Found cfbs policy set: '{}'".format(masterfiles))
     elif masterfiles and masterfiles.startswith(("http://", "https://")):
         urls = [masterfiles]
-        paths = _download_urls(urls)
+        try:
+            paths = _download_urls(urls)
+        except ChecksumError as ce:
+            log.error(ce)
+            return 1
         assert len(paths) == 1
         masterfiles = paths[0]
         log.debug("Deploying downloaded: %s" % masterfiles)

@@ -279,3 +279,7 @@ def has_unescaped_character(string, char):
 
 def programmer_error(msg):
     sys.exit("Programmer error: " + msg)
+
+
+class ChecksumError(Exception):
+    pass

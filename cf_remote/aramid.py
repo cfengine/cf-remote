@@ -250,11 +250,18 @@ def _wait_for_tasks(hosts, tasks, ignore_failed, echo, echo_action, out_flag="")
 
             if task.proc.args[0] == "scp":
                 log.debug(
-                    f"Copying '{task.action}' to {task.host.user}@{task.host.host_name} over scp"
+                    "Copying '{}' to {}@{} over scp".format(
+                        task.action, task.host.user, task.host.host_name
+                    )
                 )
             else:
                 log.debug(
-                    f"Running '{task.action}' on {task.host.user}@{task.host.host_name} over {task.proc.args[0]}"
+                    "Running '{}' on {}@{} over {}".format(
+                        task.action,
+                        task.host.user,
+                        task.host.host_name,
+                        task.proc.args[0],
+                    )
                 )
 
             try:

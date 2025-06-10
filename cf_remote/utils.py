@@ -217,11 +217,27 @@ def copy_file(input_path, output_path):
     os.rename(tmp_output_path, output_path)
 
 
+def delete_file(filepath):
+    if not os.path.isfile(filepath):
+        log.info(f"Attempted to delete non-existing file {filepath}")
+        return
+    os.remove(filepath)
+
+
 def is_different_checksum(checksum, content):
     assert type(content) == bytes
 
     digest = hashlib.sha256(content).digest().hex()
     return checksum != digest
+
+
+def file_has_different_checksum(filepath, checksum):
+    assert os.path.exists(filepath)
+    assert checksum
+
+    with open(filepath, "rb") as f:
+        content = f.read()
+        return is_different_checksum(checksum, content)
 
 
 def error_and_none(msg):

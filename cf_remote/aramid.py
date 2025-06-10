@@ -122,6 +122,9 @@ class _Task:
         self.stderr = ""
         self.done = False
 
+        assert self.proc
+        assert self.host
+
     def communicate(self, timeout=1, ignore_failed=False):
         start = time.time()
         try:
@@ -216,6 +219,9 @@ class Host:
 
         self.tasks = []
         """A helper attribute which may change in the future"""
+        assert self.user
+        assert self.port
+        assert self.host_name
 
     @property
     def login(self):

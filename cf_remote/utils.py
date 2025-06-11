@@ -9,6 +9,8 @@ from collections import OrderedDict
 from cf_remote import log
 from datetime import datetime
 
+SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
+
 
 def is_in_past(date):
     now = datetime.now()
@@ -66,6 +68,14 @@ def ls(path):
 def read_file(path):
     try:
         with open(path, "r") as f:
+            return f.read()
+    except FileNotFoundError:
+        return None
+
+
+def read_binary_file(path):
+    try:
+        with open(path, "rb") as f:
             return f.read()
     except FileNotFoundError:
         return None
@@ -224,6 +234,42 @@ def delete_file(filepath):
     os.remove(filepath)
 
 
+def is_sha256(checksum):
+    return SHA256_RE.match(checksum)
+
+
+def parse_checksums_txt(checksums):
+    """Parse checksums argument which could either be a single checksum or a path to a checksums.txt file."""
+    if not checksums:
+        # No checksums provided
+        return {"any": None}
+    elif is_sha256(checksums):
+        # Single checksum provided
+        return {"any": checksums}
+
+    if not os.path.isfile(checksums):
+        user_error(
+            "Provided checksum was not a single sha256 checksum, nor an existing checksums.txt file"
+        )
+    # checksums.txt file is provided parse it
+    lines = read_file(checksums).strip().splitlines()
+    d = dict()
+    for line in lines:
+        # Skip whitespace
+        line = line.strip()
+        if not line:
+            continue
+        # Split line into hash and filename
+        parts = re.split(r"\s+", line, maxsplit=1)
+        if len(parts) != 2 or not is_sha256(parts[0]):
+            log.warning(f"Unable to parse line {line} of {checksums}. Skipping line")
+            continue
+        # Adding entry to dictionary
+        d[parts[1]] = parts[0]
+
+    return d
+
+
 def is_different_checksum(checksum, content):
     assert type(content) == bytes
 
@@ -232,12 +278,8 @@ def is_different_checksum(checksum, content):
 
 
 def file_has_different_checksum(filepath, checksum):
-    assert os.path.exists(filepath)
-    assert checksum
-
-    with open(filepath, "rb") as f:
-        content = f.read()
-        return is_different_checksum(checksum, content)
+    content = read_binary_file(filepath)
+    return is_different_checksum(checksum, content)
 
 
 def error_and_none(msg):

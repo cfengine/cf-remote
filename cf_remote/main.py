@@ -68,6 +68,13 @@ def _get_arg_parser():
         "--package", help="Local path to package or URL to download", type=str
     )
     sp.add_argument(
+        "--checksums",
+        "--checksum",
+        help="Single checksum or path of checksums.txt file containing checksums for the provided packages",
+        type=str,
+    )
+
+    sp.add_argument(
         "--hub-package",
         help="Local path to package or URL to download for --hub",
         type=str,
@@ -77,6 +84,7 @@ def _get_arg_parser():
         help="Local path to package or URL to download for --clients",
         type=str,
     )
+
     sp.add_argument("--bootstrap", "-B", help="cf-agent --bootstrap argument", type=str)
     sp.add_argument("--clients", "-c", help="Where to install client package", type=str)
     sp.add_argument("--hub", help="Where to install hub package", type=str)
@@ -100,6 +108,11 @@ def _get_arg_parser():
         help="Comma-separated list of paths to keys hosts should trust"
         + " (implies '--trust-server no' when boostraping)",
         type=str,
+    )
+    sp.add_argument(
+        "--insecure",
+        help="Ignore checksums of downloaded packages",
+        action="store_true",
     )
 
     sp = subp.add_parser("uninstall", help="Uninstall CFEngine on the given hosts")
@@ -137,6 +150,12 @@ def _get_arg_parser():
         type=str,
     )
     sp.add_argument("tags", metavar="TAG", nargs="*")
+
+    sp.add_argument(
+        "--insecure",
+        help="Ignore checksums of downloaded packages",
+        action="store_true",
+    )
 
     sp.add_argument("--output-dir", "-o", help="Where to download", type=str)
 
@@ -264,6 +283,20 @@ def _get_arg_parser():
         type=str,
         nargs="?",
     )
+
+    sp.add_argument(
+        "--checksums",
+        "--checksum",
+        help="Checksum for provided masterfiles, or path to a checksums.txt file. Used to verify download",
+        type=str,
+    )
+
+    sp.add_argument(
+        "--insecure",
+        help="Ignore checksums of downloaded packages",
+        action="store_true",
+    )
+
     sp = subp.add_parser("agent", help="Run cf-agent")
     sp.add_argument(
         "--hosts",
@@ -301,6 +334,7 @@ def run_command_with_args(command, args):
             args.hub,
             args.clients,
             package=args.package,
+            checksums=args.checksums,
             bootstrap=args.bootstrap,
             hub_package=args.hub_package,
             client_package=args.client_package,
@@ -310,6 +344,7 @@ def run_command_with_args(command, args):
             edition=args.edition,
             remote_download=args.remote_download,
             trust_keys=trust_keys,
+            insecure_download=args.insecure,
         )
     elif command == "uninstall":
         all_hosts = (args.hosts or []) + (args.hub or []) + (args.clients or [])
@@ -331,6 +366,7 @@ def run_command_with_args(command, args):
             version=args.version,
             edition=args.edition,
             output_dir=args.output_dir,
+            insecure=args.insecure,
         )
     elif command == "run":
         return commands.run(hosts=args.hosts, raw=args.raw, command=args.remote_command)
@@ -385,7 +421,9 @@ def run_command_with_args(command, args):
         group_name = args.name if args.name else None
         return commands.destroy(group_name)
     elif command == "deploy":
-        return commands.deploy(args.hub, args.masterfiles)
+        return commands.deploy(
+            args.hub, args.masterfiles, args.checksums, args.insecure
+        )
     elif command == "agent":
         return commands.agent(args.hosts, args.bootstrap)
     elif command == "connect":

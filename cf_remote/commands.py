@@ -32,6 +32,9 @@ from cf_remote.utils import (
     whoami,
     get_package_name,
     user_error,
+    parse_checksums_txt,
+    is_sha256,
+    file_has_different_checksum,
 )
 from cf_remote.utils import (
     user_error,
@@ -98,21 +101,61 @@ def scp(hosts, files, users=None):
     return errors
 
 
-def _download_urls(urls):
+def _download_urls(urls, checksums, insecure_download=False):
     """Download packages from URLs, replace URLs with filenames
 
     Return a new list of packages where URLs are replaced with paths
     to packages which have been downloaded. Other values, like None
     and paths to local packages are preserved.
     """
+
     urls_dir = cf_remote_packages_dir("url_specified")
+    package_checksums = parse_checksums_txt(checksums)
 
     downloaded_urls = []
     downloaded_paths = []
     paths = []
     for package_url in urls:
         # Skip anything that is not a package url:
-        if package_url is None or not is_package_url(package_url):
+        if package_url is None:
+            paths.append(package_url)
+            continue
+
+        # Find the checksum
+        name = os.path.basename(package_url)
+        checksum = None
+        if package_url in package_checksums:
+            # Checksum provided for the specified url
+            checksum = package_checksums[package_url]
+        elif name in package_checksums:
+            # Checksum provided for the specified name
+            checksum = package_checksums[name]
+        elif "any" in package_checksums:
+            # Single checksum or no checksum privided
+            checksum = package_checksums["any"]
+        else:
+            # Checksum was specified, but not for this package
+            if not insecure_download:
+                user_error(
+                    f"Checksums were specified, but not for the package {package_url}. "
+                )
+            log.warning(
+                f"Checksums were specified, but not for the package {package_url}. "
+            )
+
+        if not is_package_url(package_url):
+            # Local path - check filehash
+            if checksum:
+                if file_has_different_checksum(package_url, checksum):
+                    if not insecure_download:
+                        user_error(
+                            f"Provided file {package_url} did not have expected checksum {checksum}. Aborting"
+                        )
+                    log.warning(
+                        f"Provided file {package_url} did not have expected checksum {checksum}"
+                    )
+            else:
+                log.warning(f"No checksum provided for local file {package_url}")
             paths.append(package_url)
             continue
 
@@ -128,7 +171,8 @@ def _download_urls(urls):
         if path in downloaded_paths and url not in downloaded_urls:
             user_error("2 packages with the same name '%s' from different URLs" % name)
 
-        download_package(url, path)
+        download_package(url, path, checksum, insecure=insecure_download)
+
         downloaded_urls.append(url)
         downloaded_paths.append(path)
 
@@ -168,12 +212,14 @@ def install(
     package=None,
     hub_package=None,
     client_package=None,
+    checksums=None,
     version=None,
     demo=False,
     call_collect=False,
     edition=None,
     remote_download=False,
-    trust_keys=None
+    trust_keys=None,
+    insecure_download=False,
 ):
     assert hubs or clients
     assert not (hubs and clients and package)
@@ -186,7 +232,9 @@ def install(
         package, hub_package, client_package = _verify_package_urls(packages)
     else:
         try:
-            package, hub_package, client_package = _download_urls(packages)
+            package, hub_package, client_package = _download_urls(
+                packages, checksums, insecure_download=insecure_download
+            )
         except ChecksumError as ce:
             log.error(ce)
             return 1
@@ -230,6 +278,7 @@ def install(
                     show_info=show_host_info,
                     remote_download=remote_download,
                     trust_keys=trust_keys,
+                    insecure_download=insecure_download,
                 )
             )
 
@@ -289,7 +338,12 @@ def install(
 
 
 def _iterate_over_packages(
-    tags=None, version=None, edition=None, download=False, output_dir=None
+    tags=None,
+    version=None,
+    edition=None,
+    download=False,
+    output_dir=None,
+    download_insecure=False,
 ):
     releases = Releases(edition)
     print("Available releases: {}".format(releases))
@@ -319,7 +373,9 @@ def _iterate_over_packages(
             if download:
                 try:
                     package_path = download_package(
-                        artifact.url, checksum=artifact.checksum
+                        artifact.url,
+                        checksum=artifact.checksum,
+                        insecure=download_insecure,
                     )
                 except ChecksumError as ce:
                     log.error(ce)
@@ -350,8 +406,10 @@ def list_command(tags=None, version=None, edition=None):
     return _iterate_over_packages(tags, version, edition, False)
 
 
-def download(tags=None, version=None, edition=None, output_dir=None):
-    return _iterate_over_packages(tags, version, edition, True, output_dir)
+def download(tags=None, version=None, edition=None, output_dir=None, insecure=False):
+    return _iterate_over_packages(
+        tags, version, edition, True, output_dir, download_insecure=insecure
+    )
 
 
 def _get_aws_creds_from_env():
@@ -847,7 +905,7 @@ def _get_hubs():
     return hubs
 
 
-def deploy(hubs, masterfiles):
+def deploy(hubs, masterfiles, masterfiles_checksum, insecure_download):
     if not hubs:
         hubs = _get_hubs()
         if hubs:
@@ -867,8 +925,9 @@ def deploy(hubs, masterfiles):
         print("Found cfbs policy set: '{}'".format(masterfiles))
     elif masterfiles and masterfiles.startswith(("http://", "https://")):
         urls = [masterfiles]
+        checksums = masterfiles_checksum
         try:
-            paths = _download_urls(urls)
+            paths = _download_urls(urls, checksums, insecure_download=insecure_download)
         except ChecksumError as ce:
             log.error(ce)
             return 1

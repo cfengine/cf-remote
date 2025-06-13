@@ -410,7 +410,9 @@ def _package_from_list(tags, extension, packages):
     return artifact.url
 
 
-def _package_from_releases(tags, extension, version, edition, remote_download):
+def _package_from_releases(
+    tags, extension, version, edition, remote_download, insecure_download
+):
     log.debug("Looking for a package from releases based on host tags: {}".format(tags))
     releases = Releases(edition)
     release = releases.default
@@ -442,7 +444,9 @@ def _package_from_releases(tags, extension, version, edition, remote_download):
     if remote_download:
         return artifact.url
     else:
-        return download_package(artifact.url, checksum=artifact.checksum)
+        return download_package(
+            artifact.url, checksum=artifact.checksum, insecure=insecure_download
+        )
 
 
 def get_package_from_host_info(
@@ -454,6 +458,7 @@ def get_package_from_host_info(
     edition="enterprise",
     packages=None,
     remote_download=False,
+    insecure_download=False,
 ):
     tags = []
     if edition == "enterprise":
@@ -481,7 +486,7 @@ def get_package_from_host_info(
 
     if packages is None:  # No command line argument given
         package = _package_from_releases(
-            tags, extension, version, edition, remote_download
+            tags, extension, version, edition, remote_download, insecure_download
         )
     else:
         package = _package_from_list(tags, extension, packages)
@@ -503,7 +508,8 @@ def install_host(
     edition=None,
     show_info=True,
     remote_download=False,
-    trust_keys=None
+    trust_keys=None,
+    insecure_download=False
 ):
     data = get_info(host, connection=connection)
     if show_info:
@@ -526,6 +532,7 @@ def install_host(
                 edition,
                 packages,
                 remote_download,
+                insecure_download,
             )
         except ChecksumError as ce:
             log.error(ce)

@@ -3,13 +3,17 @@ import fcntl
 import re
 import urllib.request
 import json
+import tempfile
 from collections import OrderedDict
 from cf_remote.utils import (
     is_different_checksum,
+    file_has_different_checksum,
     user_error,
     write_json,
     mkdir,
     parse_json,
+    copy_file,
+    delete_file,
 )
 from cf_remote import log
 from cf_remote.paths import cf_remote_dir, cf_remote_packages_dir
@@ -32,52 +36,70 @@ def get_json(url):
     return data
 
 
-def download_package(url, path=None, checksum=None):
+def download_package(url, path=None, checksum=None, insecure=False):
+    if not insecure and not checksum:
+        log.warning(f"Checksum not provided for download of package {url}. ")
 
     if checksum and not SHA256_RE.match(checksum):
-        raise ChecksumError(
-            "Invalid checksum or unsupported checksum algorithm: '%s'" % checksum
+        if not insecure:
+            raise ChecksumError(
+                "Invalid checksum or unsupported checksum algorithm: '%s'" % checksum
+            )
+        log.warning(
+            f"Invalid checksum or unsupported checksum algorithm for file {url}: {checksum}. Continuing due to insecure flag"
         )
 
+    filename = os.path.basename(url)
+
     if not path:
-        filename = os.path.basename(url)
         directory = cf_remote_packages_dir()
         mkdir(directory)
         path = os.path.join(directory, filename)
 
-    # Use "ab" to prevent truncation of the file in case it is already being
-    # downloaded by a different thread.
-    with open(path, "ab+") as f:
-        # Get an exclusive lock. If the file size is != 0 then it's already
-        # downloaded, otherwise we download.
-        fcntl.flock(f.fileno(), fcntl.LOCK_EX)
-        st = os.stat(path)
-        if st.st_size != 0:
+    tempfolder = os.path.join(tempfile.gettempdir(), "cf-remote")
+    mkdir(tempfolder)
+    # Wait for other process if lockfile is taken. Otherwise lock it
+    lockfile = os.path.join(tempfolder, f"{filename}.lock")
+    with open(lockfile, "w") as lf:
+        # Exclusive file lock. Automatically unlocked on end of or return from open
+        fcntl.flock(lf.fileno(), fcntl.LOCK_EX)
+        # Check if file already exists
+        if os.path.exists(path):
+            # File already exist, check the hash
             print("Package '{}' already downloaded".format(path))
+            if checksum and file_has_different_checksum(path, checksum):
+                if insecure:
+                    log.warning(
+                        "Pre-existing file {path} did not have expected checksum {checksum}. Continuing due to insecure flag"
+                    )
+                    return path
+                delete_file(path)
+                log.warning(
+                    "Pre-existing file did not match existing checksum. File is now deleted."
+                )
+            else:
+                # Checksum was correct, skip download
+                return path
 
-            f.seek(0)
-            content = f.read()
-            if checksum and is_different_checksum(checksum, content):
+        # File does not exist, download it
+        print("Downloading package: '{}'".format(path))
+        tempfilename, header = urllib.request.urlretrieve(url)
+        # File downloaded to temp file. Check checksum
+        if checksum and file_has_different_checksum(tempfilename, checksum):
+            if not insecure:
+                urllib.request.urlcleanup()
                 raise ChecksumError(
-                    "Downloaded file '{}' does not match expected checksum '{}'. Please delete the file.".format(
+                    "Downloaded file '{}' does not match expected checksum '{}'.".format(
                         filename, checksum
                     )
                 )
-
-        else:
-            print("Downloading package: '{}'".format(path))
-
-            answer = urllib.request.urlopen(url).read()
-            if checksum and is_different_checksum(checksum, answer):
-                raise ChecksumError(
-                    "Downloaded file '{}' does not match expected checksum '{}'. Please delete the file.".format(
-                        filename, checksum
-                    )
+            else:
+                log.warning(
+                    f"Downloaded file {url} did not have expected checksum {checksum}. Continuing due to insecure flag"
                 )
 
-            f.write(answer)
-            f.flush()
-
-        fcntl.flock(f.fileno(), fcntl.LOCK_UN)
+        # Copy over the tempfile and remove it
+        copy_file(tempfilename, path)
+        urllib.request.urlcleanup()
 
     return path

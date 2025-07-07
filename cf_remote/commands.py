@@ -941,16 +941,22 @@ def deploy(hubs, masterfiles):
 
 def agent(hosts, bootstrap=None):
 
-    command = "cf-agent"
-    if bootstrap:
-        command += " --bootstrap {}".format(bootstrap)
+    if len(bootstrap) > 1:
+        user_error(
+            "Cannot boostrap {} to {}. Cannot bootstrap to more than one host.".format(
+                hosts, bootstrap
+            )
+        )
+
+    hub_host = bootstrap[0]
 
     for host in hosts:
         data = get_info(host)
 
-        if not data["agent_version"]:
+        if not data["agent_location"]:
             user_error("CFEngine not installed on {}".format(host))
 
+        command = "{} --bootstrap {}".format(data["agent_location"], hub_host)
         output = run_command(host, command, sudo=True)
         if output:
             print(output)

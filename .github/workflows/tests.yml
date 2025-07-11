@@ -12,11 +12,12 @@ on:
 jobs:
   test:
     runs-on: ubuntu-24.04
+    permissions:
+      contents: read
     strategy:
       fail-fast: false
       matrix:
         python-version: ["3.8", "3.9", "3.10", "3.11", "3.12", "3.13"]
-
     steps:
       - uses: actions/checkout@v4
         with:
@@ -60,7 +61,6 @@ jobs:
       fail-fast: false
       matrix:
         python-version: ["3.5.10", "3.6.15", "3.7.10"]
-
     steps:
       - uses: actions/checkout@v4
         with:

@@ -1,11 +1,5 @@
-import json
-from collections import OrderedDict
-
 from cf_remote.packages import Release
 from cf_remote.utils import read_json
-from cf_remote import log
-
-# log.set_level("debug")
 
 
 def test_release():

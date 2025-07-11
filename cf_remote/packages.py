@@ -3,7 +3,6 @@ from cf_remote.web import get_json
 from cf_remote.utils import is_in_past, canonify
 from cf_remote import log
 import re
-import sys
 
 
 class Artifact:
@@ -223,7 +222,7 @@ class Releases:
                 and release["lts_branch"] not in self.supported_branches
             ):
                 continue
-            if "latestLTS" in release and release["latestLTS"] == True:
+            if "latestLTS" in release and release["latestLTS"] is True:
                 self.default = rel
                 rel.default = True
             self.releases.append(rel)

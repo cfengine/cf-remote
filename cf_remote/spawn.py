@@ -166,7 +166,7 @@ class VM:
             return data.extra["zone"].name
 
         region = self._driver.region
-        if (type(region) != str) and hasattr(region, "name"):
+        if (type(region) is not str) and hasattr(region, "name"):
             return region.name
         else:
             return str(region)
@@ -397,7 +397,7 @@ def spawn_vm_in_aws(
     sizes = criteria.get("sizes") or aws_defaults["sizes"]
     small = sizes[architecture]["size"]
     large = sizes[architecture]["xlsize"]
-    if size == None:
+    if size is None:
         size = (large or small) if (role == "hub") else (small or large)
     user = criteria.get("user") or aws_defaults["user"]
     ami = criteria.get("ami") or _get_ami(criteria, driver)

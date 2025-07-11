@@ -32,9 +32,6 @@ from cf_remote.utils import (
     whoami,
     get_package_name,
     user_error,
-)
-from cf_remote.utils import (
-    user_error,
     is_package_url,
     print_progress_dot,
     ChecksumError,
@@ -477,7 +474,7 @@ def spawn(
 
 def _is_saved_group(vms_info, group_name):
     group = vms_info[group_name]
-    return group.get("meta", {}).get("saved") == True
+    return group.get("meta", {}).get("saved") is True
 
 
 def _delete_saved_group(vms_info, group_name):

@@ -10,11 +10,11 @@ from cf_remote.utils import (
     column_print,
     parse_envfile,
     pretty,
-    programmer_error,
+    CFRProgrammerError,
     CFRExitError,
     parse_systeminfo,
     parse_version,
-    ChecksumError,
+    CFRChecksumError,
 )
 from cf_remote.ssh import ssh_sudo, ssh_cmd, scp, auto_connect
 from cf_remote import log
@@ -235,7 +235,7 @@ def get_info(host, *, users=None, connection=None):
         )
 
         if discovery is None:
-            programmer_error("Couldn't parse NT discovery file")
+            raise CFRProgrammerError("Couldn't parse NT discovery file")
 
         data["uname"] = (
             discovery.get("NTD_UNAME")
@@ -527,7 +527,7 @@ def install_host(
                 packages,
                 remote_download,
             )
-        except ChecksumError as ce:
+        except CFRChecksumError as ce:
             log.error(ce)
             return 1
 

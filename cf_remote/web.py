@@ -11,7 +11,7 @@ from cf_remote.utils import (
 )
 from cf_remote import log
 from cf_remote.paths import cf_remote_dir, cf_remote_packages_dir
-from cf_remote.utils import ChecksumError
+from cf_remote.utils import CFRChecksumError
 
 SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 
@@ -33,7 +33,7 @@ def get_json(url):
 def download_package(url, path=None, checksum=None):
 
     if checksum and not SHA256_RE.match(checksum):
-        raise ChecksumError(
+        raise CFRChecksumError(
             "Invalid checksum or unsupported checksum algorithm: '%s'" % checksum
         )
 
@@ -56,7 +56,7 @@ def download_package(url, path=None, checksum=None):
             f.seek(0)
             content = f.read()
             if checksum and is_different_checksum(checksum, content):
-                raise ChecksumError(
+                raise CFRChecksumError(
                     "Downloaded file '{}' does not match expected checksum '{}'. Please delete the file.".format(
                         filename, checksum
                     )
@@ -67,7 +67,7 @@ def download_package(url, path=None, checksum=None):
 
             answer = urllib.request.urlopen(url).read()
             if checksum and is_different_checksum(checksum, answer):
-                raise ChecksumError(
+                raise CFRChecksumError(
                     "Downloaded file '{}' does not match expected checksum '{}'. Please delete the file.".format(
                         filename, checksum
                     )

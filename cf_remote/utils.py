@@ -24,6 +24,10 @@ class CFRProgrammerError(Exception):
     pass
 
 
+class CFRChecksumError(Exception):
+    pass
+
+
 def is_in_past(date):
     now = datetime.now()
     date = datetime.strptime(date, "%Y-%m-%d")
@@ -285,11 +289,3 @@ def has_unescaped_character(string, char):
             return True
         previous = current
     return False
-
-
-def programmer_error(msg):
-    sys.exit("Programmer error: " + msg)
-
-
-class ChecksumError(Exception):
-    pass

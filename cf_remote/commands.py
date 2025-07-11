@@ -34,7 +34,7 @@ from cf_remote.utils import (
     CFRExitError,
     is_package_url,
     print_progress_dot,
-    ChecksumError,
+    CFRChecksumError,
 )
 from cf_remote.spawn import VM, VMRequest, Providers, AWSCredentials, GCPCredentials
 from cf_remote.spawn import spawn_vms, destroy_vms, dump_vms_info, get_cloud_driver
@@ -186,7 +186,7 @@ def install(
     else:
         try:
             package, hub_package, client_package = _download_urls(packages)
-        except ChecksumError as ce:
+        except CFRChecksumError as ce:
             log.error(ce)
             return 1
 
@@ -320,7 +320,7 @@ def _iterate_over_packages(
                     package_path = download_package(
                         artifact.url, checksum=artifact.checksum
                     )
-                except ChecksumError as ce:
+                except CFRChecksumError as ce:
                     log.error(ce)
                     return 1
                 if output_dir:
@@ -868,7 +868,7 @@ def deploy(hubs, masterfiles):
         urls = [masterfiles]
         try:
             paths = _download_urls(urls)
-        except ChecksumError as ce:
+        except CFRChecksumError as ce:
             log.error(ce)
             return 1
         assert len(paths) == 1

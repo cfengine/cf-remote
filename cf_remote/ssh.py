@@ -10,6 +10,7 @@ from cf_remote import aramid
 from cf_remote import log
 from cf_remote import paths
 from cf_remote.utils import whoami
+from cf_remote.aramid import ExecutionResult
 
 
 class LocalConnection:
@@ -33,8 +34,8 @@ class LocalConnection:
             universal_newlines=True,
             cwd=os.environ["HOME"],
         )
-        result.retcode = result.returncode
-        return result
+        r = ExecutionResult(command, result.returncode, result.stdout, result.stderr)
+        return r
 
     def put(self, src, hide=False):
         dst = os.path.join(os.environ["HOME"], os.path.basename(src))
@@ -91,7 +92,7 @@ class Connection:
 
     def run(self, command, hide=False):
         extra_ssh_args = []
-        if "key_filename" in self._connect_kwargs:
+        if self._connect_kwargs and "key_filename" in self._connect_kwargs:
             extra_ssh_args.extend(["-i", self._connect_kwargs["key_filename"]])
 
         # If the Control Master process is running (poll() returns None), let's
@@ -192,7 +193,7 @@ def scp(file, remote, connection=None, rename=None, hide=False):
                 return 0
             if not hide:
                 print("Renaming '%s' -> '%s' on '%s'" % (file, rename, remote))
-            ssh_cmd(connection, "mv %s %s" % (file, rename), hide=hide)
+            ssh_cmd(connection, "mv %s %s" % (file, rename))
     return 0
 
 

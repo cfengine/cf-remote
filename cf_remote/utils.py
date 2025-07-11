@@ -16,6 +16,12 @@ class CFRExitError(Exception):
     pass
 
 
+class CFRUserError(Exception):
+    """Exception for when the user did something wrong, such as specifying a file which does not exist."""
+
+    pass
+
+
 class CFRProgrammerError(Exception):
     """Exception to use for cases where we as developers made a mistake.
     Situations which should never happen - similar to assertions.

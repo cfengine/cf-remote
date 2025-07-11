@@ -3,6 +3,7 @@ import sys
 import re
 from os.path import basename, dirname, join, exists
 from collections import OrderedDict
+from typing import Union
 
 from cf_remote.utils import (
     error_and_none,
@@ -200,8 +201,8 @@ def get_package_tags(os_release=None, redhat_release=None):
 
 @auto_connect
 def get_info(host, *, users=None, connection=None):
+    assert connection is not None
     log.debug("Getting info about '{}'".format(host))
-
     user, host = connection.ssh_user, connection.ssh_host
     data = OrderedDict()
     data["ssh_user"] = user
@@ -451,10 +452,14 @@ def get_package_from_host_info(
     arch,
     version=None,
     hub=False,
-    edition="enterprise",
+    edition: Union[str, None] = "enterprise",
     packages=None,
     remote_download=False,
 ):
+    assert edition in ["enterprise", "community", None]
+    if edition is None:
+        edition = "enterprise"
+
     tags = []
     if edition == "enterprise":
         tags.append("hub" if hub else "agent")
@@ -500,7 +505,7 @@ def install_host(
     demo=False,
     call_collect=False,
     connection=None,
-    edition=None,
+    edition: Union[str, None] = None,
     show_info=True,
     remote_download=False,
     trust_keys=None

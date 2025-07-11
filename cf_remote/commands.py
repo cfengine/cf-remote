@@ -35,6 +35,7 @@ from cf_remote.utils import (
     is_package_url,
     print_progress_dot,
     CFRChecksumError,
+    CFRUserError,
 )
 from cf_remote.spawn import VM, VMRequest, Providers, AWSCredentials, GCPCredentials
 from cf_remote.spawn import spawn_vms, destroy_vms, dump_vms_info, get_cloud_driver
@@ -71,6 +72,7 @@ def run(hosts, command, users=None, sudo=False, raw=False):
             continue
         cmd = command
         lines = lines.replace("\r", "")
+        fill = ""
         for line in lines.split("\n"):
             if raw:
                 print(line)
@@ -79,6 +81,7 @@ def run(hosts, command, users=None, sudo=False, raw=False):
                 fill = " " * (len(cmd) + 7)
                 cmd = None
             else:
+                assert fill, "First iteration of loop should have set fill variable"
                 print("{}{}'{}'".format(host_colon, fill, line))
     return errors
 
@@ -290,6 +293,7 @@ def install(
 def _iterate_over_packages(
     tags=None, version=None, edition=None, download=False, output_dir=None
 ):
+    assert edition in ["enterprise", "community", None]
     releases = Releases(edition)
     print("Available releases: {}".format(releases))
 
@@ -297,7 +301,7 @@ def _iterate_over_packages(
     if version and version not in release_versions:
         raise CFRExitError("CFEngine version '%s' doesn't exist (yet)." % version)
 
-    if not version:
+    if tags and not version:
         for tag in tags:
             if tag in release_versions:
                 version = tag
@@ -307,10 +311,11 @@ def _iterate_over_packages(
     release = releases.default
     if version:
         release = releases.pick_version(version)
+    if not release:
+        raise CFRExitError("Failed to find a release for version '%s'" % version)
     print("Using {}:".format(release))
     log.debug("Looking for a release based on host tags: {}".format(tags))
     artifacts = release.find(tags)
-
     if len(artifacts) == 0:
         print("No suitable packages found")
     else:
@@ -375,16 +380,17 @@ def spawn(
     public_ip=True,
     extend_group=False,
 ):
+    creds_data = None
     if os.path.exists(CLOUD_CONFIG_FPATH):
         creds_data = read_json(CLOUD_CONFIG_FPATH)
-    else:
-        print("Cloud configuration not found at %s" % CLOUD_CONFIG_FPATH)
-        return 1
+    if not creds_data:
+        raise CFRUserError("Cloud configuration not found at %s" % CLOUD_CONFIG_FPATH)
 
+    vms_info = None
     if os.path.exists(CLOUD_STATE_FPATH):
         vms_info = read_json(CLOUD_STATE_FPATH)
-    else:
-        vms_info = dict()
+    if not vms_info:
+        vms_info = {}
 
     group_key = "@%s" % group_name
     group_exists = group_key in vms_info
@@ -525,6 +531,8 @@ def destroy(group_name=None):
         return 1
 
     vms_info = read_json(CLOUD_STATE_FPATH)
+    if not vms_info:
+        raise CFRUserError("No saved VMs found in '{}'".format(CLOUD_STATE_FPATH))
 
     to_destroy = []
     if group_name:
@@ -543,16 +551,23 @@ def destroy(group_name=None):
 
         region = vms_info[group_name]["meta"]["region"]
         provider = vms_info[group_name]["meta"]["provider"]
+        if provider not in ["aws", "gcp"]:
+            raise CFRUserError(
+                "Unsupported provider '{}' encountered in '{}', only aws / gcp is supported".format(
+                    provider, CLOUD_STATE_FPATH
+                )
+            )
+
+        driver = None
         if provider == "aws":
             if aws_creds is None:
                 raise CFRExitError("Missing/incomplete AWS credentials")
-                return 1
             driver = get_cloud_driver(Providers.AWS, aws_creds, region)
         if provider == "gcp":
             if gcp_creds is None:
                 raise CFRExitError("Missing/incomplete GCP credentials")
-                return 1
             driver = get_cloud_driver(Providers.GCP, gcp_creds, region)
+        assert driver is not None
 
         nodes = driver.list_nodes()
         for name, vm_info in vms_info[group_name].items():
@@ -574,16 +589,23 @@ def destroy(group_name=None):
 
             region = vms_info[group_name]["meta"]["region"]
             provider = vms_info[group_name]["meta"]["provider"]
+            if provider not in ["aws", "gcp"]:
+                raise CFRUserError(
+                    "Unsupported provider '{}' encountered in '{}', only aws / gcp is supported".format(
+                        provider, CLOUD_STATE_FPATH
+                    )
+                )
+
+            driver = None
             if provider == "aws":
                 if aws_creds is None:
                     raise CFRExitError("Missing/incomplete AWS credentials")
-                    return 1
                 driver = get_cloud_driver(Providers.AWS, aws_creds, region)
             if provider == "gcp":
                 if gcp_creds is None:
                     raise CFRExitError("Missing/incomplete GCP credentials")
-                    return 1
                 driver = get_cloud_driver(Providers.GCP, gcp_creds, region)
+            assert driver is not None
 
             nodes = driver.list_nodes()
             for name, vm_info in vms_info[group_name].items():
@@ -675,11 +697,15 @@ def save(name, hosts, role):
 
 
 def _ansible_inventory():
-    if not os.path.exists(CLOUD_STATE_FPATH):
-        print("No saved cloud state info")
-        return 1
 
-    vms_info = read_json(CLOUD_STATE_FPATH)
+    vms_info = None
+    if os.path.exists(CLOUD_STATE_FPATH):
+        vms_info = read_json(CLOUD_STATE_FPATH)
+
+    if not vms_info:
+        raise CFRUserError(
+            "No saved cloud state info in '{}'".format(CLOUD_STATE_FPATH)
+        )
     all_lines = []
     hub_lines = []
     client_lines = []
@@ -939,15 +965,12 @@ def deploy(hubs, masterfiles):
 
 
 def agent(hosts, bootstrap=None):
-
-    if len(bootstrap) > 1:
+    if bootstrap and len(bootstrap) > 1:
         raise CFRExitError(
             "Cannot boostrap {} to {}. Cannot bootstrap to more than one host.".format(
                 hosts, bootstrap
             )
         )
-
-    hub_host = bootstrap[0]
 
     for host in hosts:
         data = get_info(host)
@@ -955,7 +978,10 @@ def agent(hosts, bootstrap=None):
         if not data["agent_location"]:
             raise CFRExitError("CFEngine not installed on {}".format(host))
 
-        command = "{} --bootstrap {}".format(data["agent_location"], hub_host)
+        command = "{}".format(data["agent_location"])
+        if bootstrap:
+            command += "--bootstrap {}".format(bootstrap[0])
+
         output = run_command(host, command, sudo=True)
         if output:
             print(output)

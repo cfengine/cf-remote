@@ -31,6 +31,7 @@ def get_json(url):
 
 
 def download_package(url, path=None, checksum=None):
+    assert path is None or type(path) is str and len(path) > 0
 
     if checksum and not SHA256_RE.match(checksum):
         raise CFRChecksumError(
@@ -42,6 +43,10 @@ def download_package(url, path=None, checksum=None):
         directory = cf_remote_packages_dir()
         mkdir(directory)
         path = os.path.join(directory, filename)
+
+    assert type(path) is str and len(path) > 0
+    filename = os.path.basename(path)
+    assert type(filename) is str and len(filename) > 0
 
     # Use "ab" to prevent truncation of the file in case it is already being
     # downloaded by a different thread.

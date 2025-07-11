@@ -1,8 +1,10 @@
+import re
 from os.path import basename, splitext, expanduser, abspath
+from typing import Union
+
 from cf_remote.web import get_json
 from cf_remote.utils import is_in_past, canonify
 from cf_remote import log
-import re
 
 
 class Artifact:
@@ -159,7 +161,7 @@ class Release:
         self.url = data["URL"]
         self.lts = data["lts_branch"] if "lts_branch" in data else None
         self.extended_data = data["data"] if "data" in data else None
-        self.artifacts = None
+        self.artifacts = []
         self.default = False
 
     def init_download(self):
@@ -189,7 +191,9 @@ class Release:
 
 
 class Releases:
-    def __init__(self, edition="enterprise"):
+    def __init__(self, edition: Union[str, None] = "enterprise"):
+        if edition is None:
+            edition = "enterprise"
         assert edition in ["community", "enterprise"]
         self.url = "https://cfengine.com/release-data/{}/releases.json".format(edition)
         self.data = get_json(self.url)

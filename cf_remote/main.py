@@ -475,6 +475,7 @@ def is_in_cloud_state(name):
         return False
     # else
     state = read_json(paths.CLOUD_STATE_FPATH)
+    assert state, "Failed reading from '{}'".format(paths.CLOUD_STATE_FPATH)
     if name in state:
         return True
     if ("@" + name) in state:
@@ -493,6 +494,8 @@ def get_cloud_hosts(name, bootstrap_ips=False):
         return []
 
     state = read_json(paths.CLOUD_STATE_FPATH)
+    if not state:
+        return []
     group_name = None
     hosts = []
     if name.startswith("@") and name in state:

@@ -218,7 +218,7 @@ def copy_file(input_path, output_path):
 
 
 def is_different_checksum(checksum, content):
-    assert type(content) == bytes
+    assert type(content) is bytes
 
     digest = hashlib.sha256(content).digest().hex()
     return checksum != digest

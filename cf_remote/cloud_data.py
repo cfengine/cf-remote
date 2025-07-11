@@ -80,7 +80,8 @@ aws_image_criteria = {
         "region": "eu-west-1",
     },
     "windows": {
-        "note": "Note that typically we rely on custom pre-configured windows imimages with ssh installed and pre-populated public keys so an image spawned from this criteria will not come with ssh built-in and ready to go.",
+        "note": "Note that typically we rely on custom pre-configured windows imimages with ssh installed and pre-populated public keys"
+        + " so an image spawned from this criteria will not come with ssh built-in and ready to go.",
         "owner_id": "801119661308",
         "name_pattern": "Windows_Server-{version}-English-Core-Base*",
         "user": "Administrator",

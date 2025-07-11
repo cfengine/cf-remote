@@ -6,10 +6,8 @@ import json
 from collections import OrderedDict
 from cf_remote.utils import (
     is_different_checksum,
-    user_error,
     write_json,
     mkdir,
-    parse_json,
 )
 from cf_remote import log
 from cf_remote.paths import cf_remote_dir, cf_remote_packages_dir

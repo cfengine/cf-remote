@@ -590,7 +590,8 @@ def install_host(
             return 1
     else:
         log.warning(
-            "You did not specify --bootstrap in the install command, so CFEngine has been installed, but not started.\nTo fix this, run:\ncf-remote agent --hosts HOSTS --bootstrap BOOTSTRAP"
+            "You did not specify --bootstrap in the install command, so CFEngine has been installed, but not started.\n"
+            + "To fix this, run:\ncf-remote agent --hosts HOSTS --bootstrap BOOTSTRAP"
         )
     if demo:
         if hub:

@@ -211,6 +211,8 @@ class Host:
                                connection to the host
 
         """
+        assert type(user) is str and len(user) > 0
+        assert type(host_name) is str and len(host_name) > 0
         parts = urlparse("ssh://%s" % host_name)
         self.user = user or parts.username
         self.port = port or parts.port
@@ -226,12 +228,15 @@ class Host:
     @property
     def login(self):
         """user@host_name for the host"""
+        assert self.user is not None
+        assert self.host_name is not None
         return self.user + "@" + self.host_name
 
     @property
     def host_name_port(self):
         """ "host_name:port" or just "host_name" if using standard port"""
         port_spec = (":%d" % self.port) if self.port != _DEFAULT_SSH_PORT else ""
+        assert self.host_name is not None
         return self.host_name + port_spec
 
     def __str__(self):

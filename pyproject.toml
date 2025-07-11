@@ -1,0 +1,4 @@
+[tool.pyright]
+include = ["cf_remote"]
+venvPath = "."
+venv = ".venv"

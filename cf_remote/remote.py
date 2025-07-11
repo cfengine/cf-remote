@@ -3,6 +3,7 @@ import sys
 import re
 from os.path import basename, dirname, join, exists
 from collections import OrderedDict
+from typing import Union
 
 from cf_remote.utils import (
     error_and_none,
@@ -10,11 +11,11 @@ from cf_remote.utils import (
     column_print,
     parse_envfile,
     pretty,
-    programmer_error,
-    user_error,
+    CFRProgrammerError,
+    CFRExitError,
     parse_systeminfo,
     parse_version,
-    ChecksumError,
+    CFRChecksumError,
 )
 from cf_remote.ssh import ssh_sudo, ssh_cmd, scp, auto_connect
 from cf_remote import log
@@ -200,8 +201,8 @@ def get_package_tags(os_release=None, redhat_release=None):
 
 @auto_connect
 def get_info(host, *, users=None, connection=None):
+    assert connection is not None
     log.debug("Getting info about '{}'".format(host))
-
     user, host = connection.ssh_user, connection.ssh_host
     data = OrderedDict()
     data["ssh_user"] = user
@@ -235,7 +236,7 @@ def get_info(host, *, users=None, connection=None):
         )
 
         if discovery is None:
-            programmer_error("Couldn't parse NT discovery file")
+            raise CFRProgrammerError("Couldn't parse NT discovery file")
 
         data["uname"] = (
             discovery.get("NTD_UNAME")
@@ -363,7 +364,7 @@ def uninstall_cfengine(host, data, *, connection=None, purge=False):
             sudo=True,
         )
     else:
-        user_error("I don't know how to uninstall there!")
+        raise CFRExitError("I don't know how to uninstall there!")
 
     run_command(host, "pkill -U cfapache || true", connection=connection, sudo=True)
     run_command(
@@ -451,10 +452,14 @@ def get_package_from_host_info(
     arch,
     version=None,
     hub=False,
-    edition="enterprise",
+    edition: Union[str, None] = "enterprise",
     packages=None,
     remote_download=False,
 ):
+    assert edition in ["enterprise", "community", None]
+    if edition is None:
+        edition = "enterprise"
+
     tags = []
     if edition == "enterprise":
         tags.append("hub" if hub else "agent")
@@ -500,7 +505,7 @@ def install_host(
     demo=False,
     call_collect=False,
     connection=None,
-    edition=None,
+    edition: Union[str, None] = None,
     show_info=True,
     remote_download=False,
     trust_keys=None
@@ -527,7 +532,7 @@ def install_host(
                 packages,
                 remote_download,
             )
-        except ChecksumError as ce:
+        except CFRChecksumError as ce:
             log.error(ce)
             return 1
 
@@ -664,7 +669,7 @@ def deploy_masterfiles(host, tarball, *, connection=None):
         if ssh_cmd(connection, "command -v /var/cfengine/bin/cf-agent"):
             cfagent_path = "/var/cfengine/bin/"
         else:
-            user_error("Cannot find the path to cf-agent.")
+            raise CFRExitError("Cannot find the path to cf-agent.")
 
     commands = [
         "rm -rf /var/cfengine/masterfiles.delete",

@@ -6,7 +6,8 @@ from cf_remote import log
 from cf_remote import version
 from cf_remote import commands, paths
 from cf_remote.utils import (
-    user_error,
+    CFRExitError,
+    CFRProgrammerError,
     exit_success,
     expand_list_from_file,
     is_file_string,
@@ -288,7 +289,7 @@ def get_args():
     return args
 
 
-def run_command_with_args(command, args):
+def run_command_with_args(command, args) -> int:
     if command == "info":
         return commands.info(args.hosts, None)
     elif command == "install":
@@ -348,9 +349,9 @@ def run_command_with_args(command, args):
         if args.init_config:
             return commands.init_cloud_config()
         if args.name and "," in args.name:
-            user_error("Group --name may not contain commas")
+            raise CFRExitError("Group --name may not contain commas")
         if args.aws and args.gcp:
-            user_error("--aws and --gcp cannot be used at the same time")
+            raise CFRExitError("--aws and --gcp cannot be used at the same time")
         if args.role.endswith("s"):
             # role should be singular
             args.role = args.role[:-1]
@@ -360,11 +361,11 @@ def run_command_with_args(command, args):
             # AWS is currently also the default
             provider = Providers.AWS
             if args.network:
-                user_error("--network not supported for AWS")
+                raise CFRExitError("--network not supported for AWS")
             if args.no_public_ip:
-                user_error("--no-public-ip not supported for AWS")
+                raise CFRExitError("--no-public-ip not supported for AWS")
         if args.network and (args.network.count("/") != 1):
-            user_error(
+            raise CFRExitError(
                 "Invalid network specified, needs to be in the network/subnet format"
             )
 
@@ -391,7 +392,7 @@ def run_command_with_args(command, args):
     elif command == "connect":
         return commands.connect_cmd(args.hosts)
     else:
-        user_error("Unknown command: '{}'".format(command))
+        raise CFRExitError("Unknown command: '{}'".format(command))
 
 
 def validate_command(command, args):
@@ -401,66 +402,72 @@ def validate_command(command, args):
             if args.edition == "core":
                 args.edition = "community"
             if args.edition not in ["enterprise", "community"]:
-                user_error("--edition must be either community or enterprise")
+                raise CFRExitError("--edition must be either community or enterprise")
         else:
             args.edition = "enterprise"
 
     if command in ["uninstall"] and not (args.hosts or args.hub or args.clients):
-        user_error("Use --hosts, --hub or --clients to specify remote hosts")
+        raise CFRExitError("Use --hosts, --hub or --clients to specify remote hosts")
 
     if command == "install":
         if args.call_collect and not args.demo:
-            user_error("--call-collect must be used with --demo")
+            raise CFRExitError("--call-collect must be used with --demo")
         if not args.clients and not args.hub:
-            user_error("Specify hosts using --hub and --clients")
+            raise CFRExitError("Specify hosts using --hub and --clients")
         if args.hub and args.clients and args.package:
-            user_error(
+            raise CFRExitError(
                 "Use --hub-package / --client-package instead to distinguish between hosts"
             )
         if args.package and (args.hub_package or args.client_package):
-            user_error(
+            raise CFRExitError(
                 "--package cannot be used in combination with --hub-package / --client-package"
             )
         if args.package and not is_package_url(args.package):
             if not os.path.exists(os.path.expanduser(args.package)):
-                user_error("Package/directory '%s' does not exist" % args.package)
+                raise CFRExitError(
+                    "Package/directory '%s' does not exist" % args.package
+                )
         if args.hub_package and not is_package_url(args.hub_package):
             if not os.path.isfile(args.hub_package):
-                user_error("Hub package '%s' does not exist" % args.hub_package)
+                raise CFRExitError("Hub package '%s' does not exist" % args.hub_package)
         if args.client_package and not is_package_url(args.client_package):
             if not os.path.isfile(args.client_package):
-                user_error("Client package '%s' does not exist" % args.client_package)
+                raise CFRExitError(
+                    "Client package '%s' does not exist" % args.client_package
+                )
 
     if command in ["sudo", "run"]:
         if len(args.remote_command) != 1:
-            user_error("cf-remote sude/run requires exactly 1 command (use quotes)")
+            raise CFRExitError(
+                "cf-remote sude/run requires exactly 1 command (use quotes)"
+            )
         args.remote_command = args.remote_command[0]
 
     if command == "spawn" and not args.list_platforms and not args.init_config:
         # The above options don't require any other options/arguments (TODO:
         # --provider), but otherwise all have to be given
         if not args.platform:
-            user_error("--platform needs to be specified")
+            raise CFRExitError("--platform needs to be specified")
         if not args.count:
-            user_error("--count needs to be specified")
+            raise CFRExitError("--count needs to be specified")
         if not args.role:
-            user_error("--role needs to be specified")
+            raise CFRExitError("--role needs to be specified")
         if not args.name:
-            user_error("--name needs to be specified")
+            raise CFRExitError("--name needs to be specified")
 
     if command == "destroy":
         if not args.all and not args.name:
-            user_error("One of --all or NAME required for destroy")
+            raise CFRExitError("One of --all or NAME required for destroy")
 
     if command == "deploy" and args.masterfiles:
         masterfiles = args.masterfiles
         if masterfiles.startswith(("http://", "https://")):
             if not masterfiles.endswith((".tgz", ".tar.gz")):
-                user_error(
+                raise CFRExitError(
                     "masterfiles URL must be to a gzipped tarball (.tgz or .tar.gz)"
                 )
         elif not os.path.exists(masterfiles):
-            user_error("'%s' does not exist" % masterfiles)
+            raise CFRExitError("'%s' does not exist" % masterfiles)
 
 
 def is_in_cloud_state(name):
@@ -468,6 +475,7 @@ def is_in_cloud_state(name):
         return False
     # else
     state = read_json(paths.CLOUD_STATE_FPATH)
+    assert state, "Failed reading from '{}'".format(paths.CLOUD_STATE_FPATH)
     if name in state:
         return True
     if ("@" + name) in state:
@@ -486,6 +494,8 @@ def get_cloud_hosts(name, bootstrap_ips=False):
         return []
 
     state = read_json(paths.CLOUD_STATE_FPATH)
+    if not state:
+        return []
     group_name = None
     hosts = []
     if name.startswith("@") and name in state:
@@ -548,7 +558,9 @@ def resolve_hosts(string, single=False, bootstrap_ips=False):
 
     if single:
         if len(ret) != 1:
-            user_error("'{}' must contain exactly 1 hostname or IP".format(string))
+            raise CFRExitError(
+                "'{}' must contain exactly 1 hostname or IP".format(string)
+            )
         return ret[0]
     else:
         return ret
@@ -560,7 +572,9 @@ def validate_args(args):
         exit_success()
 
     if args.version and args.command not in ["install", "packages", "list", "download"]:
-        user_error("Cannot specify version number in '{}' command".format(args.command))
+        raise CFRExitError(
+            "Cannot specify version number in '{}' command".format(args.command)
+        )
 
     if "hosts" in args and args.hosts:
         log.debug("validate_args, hosts in args, args.hosts='{}'".format(args.hosts))
@@ -577,12 +591,12 @@ def validate_args(args):
 
     if not args.command:
         _get_arg_parser().print_help()
-        user_error("Invalid or missing command")
+        raise CFRExitError("Invalid or missing command")
     args.command = args.command.strip()
     validate_command(args.command, args)
 
 
-def main():
+def _main() -> int:
     args = get_args()
     if args.log_level:
         log.set_level(args.log_level)
@@ -590,8 +604,35 @@ def main():
 
     exit_code = run_command_with_args(args.command, args)
     assert type(exit_code) is int
-    sys.exit(exit_code)
+    return exit_code
+
+
+def main() -> int:
+    """Entry point
+
+    The only thing we want to do here is call _main() and handle exceptions (errors).
+    """
+    if os.getenv("CFBACKTRACE") == "1":
+        r = _main()
+        assert type(r) is int
+        return r
+    try:
+        r = _main()
+        assert type(r) is int
+        return r
+    except CFRExitError as e:
+        print("Error: " + str(e))
+    except (AssertionError, CFRProgrammerError) as e:
+        print("Error: " + str(e))
+        print(
+            "This is an unexpected error indicating a bug, please create a ticket at:"
+        )
+        print("https://northerntech.atlassian.net/")
+        print("(Rerun with CFBACKTRACE=1 in front of your command to show backtraces)")
+
+    # TODO: Handle other exceptions
+    return 1
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

@@ -9,6 +9,8 @@ from libcloud.common.types import InvalidCredsError
 from libcloud.compute.types import Provider
 from libcloud.compute.providers import get_driver
 from libcloud.compute.base import NodeSize, NodeImage
+from libcloud.compute.drivers.ec2 import EC2NodeDriver
+from libcloud.compute.drivers.gce import GCENodeDriver
 
 from cf_remote.cloud_data import aws_image_criteria, aws_defaults
 from cf_remote.utils import whoami
@@ -25,7 +27,7 @@ VMRequest = namedtuple("VMRequest", ["platform", "name", "size", "public_ip"])
 _DriverSpec = namedtuple("_DriverSpec", ["provider", "creds", "region"])
 
 # _DriverSpec -> libcloud.providers.get_driver()
-_DRIVERS = dict()
+_DRIVERS = {}
 
 
 class Providers(Enum):
@@ -68,12 +70,14 @@ class VM:
     @classmethod
     def get_by_ip(cls, ip, driver=None, nodes=None):
         if nodes is None and driver is None:
-            if len(_DRIVERS.keys()) == 1:
-                driver = _DRIVERS.items()[0]
+            drivers = list(_DRIVERS.values())
+            if len(drivers) == 1:
+                driver = drivers[0]
             else:
                 print("Don't know which driver to use: %s" % _DRIVERS.keys())
                 return None
 
+        assert driver is not None, "TODO: How does this happen?"
         nodes = nodes or driver.list_nodes()
         for node in nodes:
             if node.state in (0, "running") and (
@@ -85,12 +89,14 @@ class VM:
     @classmethod
     def get_by_name(cls, name, driver=None, nodes=None):
         if nodes is None and driver is None:
-            if len(_DRIVERS.keys()) == 1:
-                driver = _DRIVERS.items()[0]
+            drivers = list(_DRIVERS.values())
+            if len(drivers) == 1:
+                driver = drivers[0]
             else:
                 print("Don't know which driver to use: %s" % _DRIVERS.keys())
                 return None
 
+        assert driver is not None, "TODO: How does this happen?"
         nodes = nodes or driver.list_nodes()
         for node in nodes:
             if node.state in (0, "running") and node.name == name:
@@ -100,12 +106,14 @@ class VM:
     @classmethod
     def get_by_uuid(cls, uuid, driver=None, nodes=None):
         if nodes is None and driver is None:
-            if len(_DRIVERS.keys()) == 1:
-                driver = _DRIVERS.items()[0]
+            drivers = list(_DRIVERS.values())
+            if len(drivers) == 1:
+                driver = drivers[0]
             else:
                 print("Don't know which driver to use: %s" % _DRIVERS.keys())
                 return None
 
+        assert driver is not None, "TODO: How does this happen?"
         nodes = nodes or driver.list_nodes()
         for node in nodes:
             if node.uuid == uuid:
@@ -145,6 +153,7 @@ class VM:
 
     @property
     def uuid(self):
+        assert self._node is not None
         return self._node.uuid
 
     @property
@@ -165,6 +174,7 @@ class VM:
         if "zone" in data.extra:
             return data.extra["zone"].name
 
+        assert self._driver is not None
         region = self._driver.region
         if (type(region) is not str) and hasattr(region, "name"):
             return region.name
@@ -202,8 +212,9 @@ class VM:
         if (self._provider == Providers.GCP) and self._node:
             return self._node
 
+        assert self._driver is not None
         for node in self._driver.list_nodes():
-            if node is self._node or node.uuid == self._node.uuid:
+            if node is self._node or (self._node and node.uuid == self._node.uuid):
                 return node
         raise MissingInfoError("Cannot find data for '%s' in its driver" % self._name)
 
@@ -254,6 +265,7 @@ class VM:
         return "%s: %s" % (self.name, self.info)
 
     def destroy(self):
+        assert self._node is not None
         log.info("Destroying VM '%s'" % self._name)
         self._node.destroy()
         self._node = None
@@ -412,16 +424,28 @@ def spawn_vm_in_aws(
         % (platform, ami, size, criteria.get("note", ""))
     )
     try:
+        assert isinstance(driver, EC2NodeDriver)
+        # Note: Below we use type: ignore to ignore the types of the libcloud APIs.
+        #       This seems wrong, for example name is listed as string inside the
+        #       NodeImage base class. But it works, there is no type checking at
+        #       runtime. And the place where all the logic actually happens, in
+        #       EC2NodeDriver, it seems to handle it correctly.
+        #
+        #       name=None is even in their docs(!):
+        #       https://libcloud.readthedocs.io/en/stable/compute/examples.html#create-ec2-node-using-a-custom-ami
+        #
+        #       Created an issue:
+        #       https://github.com/apache/libcloud/issues/2075
         node = driver.create_node(
             name=name,
-            image=NodeImage(id=ami, name=None, driver=driver),
+            image=NodeImage(id=ami, name=None, driver=driver),  # type: ignore
             size=NodeSize(
                 id=size,
-                name=None,
-                ram=None,
-                disk=None,
+                name=None,  # type: ignore
+                ram=None,  # type: ignore
+                disk=None,  # type: ignore
                 bandwidth=None,
-                price=None,
+                price=None,  # type: ignore
                 driver=driver,
             ),
             ex_keyname=key_pair,
@@ -488,6 +512,7 @@ def spawn_vm_in_gcp(
     if not size:
         size = "n1-standard-1"
 
+    assert isinstance(driver, GCENodeDriver)
     node = driver.create_node(name, size, platform, **kwargs)
     return VM(name, driver, node, role, platform, size, None, None, None, Providers.GCP)
 

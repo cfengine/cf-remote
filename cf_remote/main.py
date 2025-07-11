@@ -7,6 +7,7 @@ from cf_remote import version
 from cf_remote import commands, paths
 from cf_remote.utils import (
     CFRExitError,
+    CFRProgrammerError,
     exit_success,
     expand_list_from_file,
     is_file_string,
@@ -288,7 +289,7 @@ def get_args():
     return args
 
 
-def run_command_with_args(command, args):
+def run_command_with_args(command, args) -> int:
     if command == "info":
         return commands.info(args.hosts, None)
     elif command == "install":
@@ -592,7 +593,7 @@ def validate_args(args):
     validate_command(args.command, args)
 
 
-def main():
+def _main() -> int:
     args = get_args()
     if args.log_level:
         log.set_level(args.log_level)
@@ -600,8 +601,35 @@ def main():
 
     exit_code = run_command_with_args(args.command, args)
     assert type(exit_code) is int
-    sys.exit(exit_code)
+    return exit_code
+
+
+def main() -> int:
+    """Entry point
+
+    The only thing we want to do here is call _main() and handle exceptions (errors).
+    """
+    if os.getenv("CFBACKTRACE") == "1":
+        r = _main()
+        assert type(r) is int
+        return r
+    try:
+        r = _main()
+        assert type(r) is int
+        return r
+    except CFRExitError as e:
+        print("Error: " + str(e))
+    except (AssertionError, CFRProgrammerError) as e:
+        print("Error: " + str(e))
+        print(
+            "This is an unexpected error indicating a bug, please create a ticket at:"
+        )
+        print("https://northerntech.atlassian.net/")
+        print("(Rerun with CFBACKTRACE=1 in front of your command to show backtraces)")
+
+    # TODO: Handle other exceptions
+    return 1
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

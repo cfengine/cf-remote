@@ -16,6 +16,14 @@ class CFRExitError(Exception):
     pass
 
 
+class CFRProgrammerError(Exception):
+    """Exception to use for cases where we as developers made a mistake.
+    Situations which should never happen - similar to assertions.
+    """
+
+    pass
+
+
 def is_in_past(date):
     now = datetime.now()
     date = datetime.strptime(date, "%Y-%m-%d")

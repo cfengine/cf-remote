@@ -1,5 +1,5 @@
 import os
-from cf_remote.utils import user_error
+from cf_remote.utils import CFRExitError
 
 
 def path_append(dir, subdir):
@@ -15,7 +15,7 @@ def cfengine_dir(subdir=None):
         parent = os.path.dirname(override_dir)
 
         if not os.path.exists(parent):
-            user_error(
+            raise CFRExitError(
                 "'{}' doesn't exist. Make sure this path is correct and exists.".format(
                     parent
                 )

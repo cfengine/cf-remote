@@ -31,7 +31,7 @@ from cf_remote.utils import (
     write_json,
     whoami,
     get_package_name,
-    user_error,
+    CFRExitError,
     is_package_url,
     print_progress_dot,
     ChecksumError,
@@ -123,7 +123,9 @@ def _download_urls(urls):
         paths.append(path)
 
         if path in downloaded_paths and url not in downloaded_urls:
-            user_error("2 packages with the same name '%s' from different URLs" % name)
+            raise CFRExitError(
+                "2 packages with the same name '%s' from different URLs" % name
+            )
 
         download_package(url, path)
         downloaded_urls.append(url)
@@ -143,7 +145,7 @@ def _verify_package_urls(urls):
         if is_package_url(package_url):
             verified_urls.append(package_url)
         else:
-            user_error("Wrong package URL: {}".format(package_url))
+            raise CFRExitError("Wrong package URL: {}".format(package_url))
 
     return verified_urls
 
@@ -293,7 +295,7 @@ def _iterate_over_packages(
 
     release_versions = [rel.version for rel in releases.releases]
     if version and version not in release_versions:
-        user_error("CFEngine version '%s' doesn't exist (yet)." % version)
+        raise CFRExitError("CFEngine version '%s' doesn't exist (yet)." % version)
 
     if not version:
         for tag in tags:
@@ -325,7 +327,7 @@ def _iterate_over_packages(
                     output_dir = os.path.abspath(os.path.expanduser(output_dir))
                     parent = os.path.dirname(output_dir)
                     if not os.path.exists(parent):
-                        user_error(
+                        raise CFRExitError(
                             "'{}' doesn't exist. Make sure this path is correct and exists.".format(
                                 parent
                             )
@@ -543,12 +545,12 @@ def destroy(group_name=None):
         provider = vms_info[group_name]["meta"]["provider"]
         if provider == "aws":
             if aws_creds is None:
-                user_error("Missing/incomplete AWS credentials")
+                raise CFRExitError("Missing/incomplete AWS credentials")
                 return 1
             driver = get_cloud_driver(Providers.AWS, aws_creds, region)
         if provider == "gcp":
             if gcp_creds is None:
-                user_error("Missing/incomplete GCP credentials")
+                raise CFRExitError("Missing/incomplete GCP credentials")
                 return 1
             driver = get_cloud_driver(Providers.GCP, gcp_creds, region)
 
@@ -574,12 +576,12 @@ def destroy(group_name=None):
             provider = vms_info[group_name]["meta"]["provider"]
             if provider == "aws":
                 if aws_creds is None:
-                    user_error("Missing/incomplete AWS credentials")
+                    raise CFRExitError("Missing/incomplete AWS credentials")
                     return 1
                 driver = get_cloud_driver(Providers.AWS, aws_creds, region)
             if provider == "gcp":
                 if gcp_creds is None:
-                    user_error("Missing/incomplete GCP credentials")
+                    raise CFRExitError("Missing/incomplete GCP credentials")
                     return 1
                 driver = get_cloud_driver(Providers.GCP, gcp_creds, region)
 
@@ -851,7 +853,7 @@ def deploy(hubs, masterfiles):
             print("Found saved/spawned hubs: " + ", ".join(hubs))
 
     if not hubs:
-        user_error(
+        raise CFRExitError(
             "No hub to deploy to (Specify with --hub or use spawn/save commands to add to cf-remote)"
         )
 
@@ -876,7 +878,7 @@ def deploy(hubs, masterfiles):
         if not masterfiles:
             masterfiles = "."
         if not (os.path.isfile("promises.cf") or os.path.isfile("promises.cf.in")):
-            user_error("No cfbs or masterfiles policy set found")
+            raise CFRExitError("No cfbs or masterfiles policy set found")
 
         masterfiles = os.path.abspath(os.path.expanduser(masterfiles))
         print("Found masterfiles policy set: '{}'".format(masterfiles))
@@ -939,7 +941,7 @@ def deploy(hubs, masterfiles):
 def agent(hosts, bootstrap=None):
 
     if len(bootstrap) > 1:
-        user_error(
+        raise CFRExitError(
             "Cannot boostrap {} to {}. Cannot bootstrap to more than one host.".format(
                 hosts, bootstrap
             )
@@ -951,7 +953,7 @@ def agent(hosts, bootstrap=None):
         data = get_info(host)
 
         if not data["agent_location"]:
-            user_error("CFEngine not installed on {}".format(host))
+            raise CFRExitError("CFEngine not installed on {}".format(host))
 
         command = "{} --bootstrap {}".format(data["agent_location"], hub_host)
         output = run_command(host, command, sudo=True)
@@ -965,7 +967,7 @@ def connect_cmd(hosts):
     assert hosts and len(hosts) >= 1  # Ensured by argument parser
 
     if len(hosts) > 1:
-        user_error("You can only connect to one host at a time")
+        raise CFRExitError("You can only connect to one host at a time")
 
     print("Opening a SSH command shell...")
     r = subprocess.run(["ssh", hosts[0]])

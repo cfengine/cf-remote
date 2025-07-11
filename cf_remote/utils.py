@@ -10,6 +10,12 @@ from cf_remote import log
 from datetime import datetime
 
 
+class CFRExitError(Exception):
+    """Generic exception to use for making the program exit with an error."""
+
+    pass
+
+
 def is_in_past(date):
     now = datetime.now()
     date = datetime.strptime(date, "%Y-%m-%d")
@@ -43,10 +49,6 @@ def canonify(string):
     return "".join(results)
 
 
-def user_error(msg):
-    sys.exit("%s: " % os.path.basename(sys.argv[0]) + msg)
-
-
 def exit_success():
     sys.exit(0)
 
@@ -78,7 +80,7 @@ def save_file(path, data):
         with open(path, "w") as f:
             f.write(data)
     except PermissionError:
-        user_error("No permission to write to '{}'.".format(path))
+        raise CFRExitError("No permission to write to '{}'.".format(path))
 
 
 def pretty(data):
@@ -177,11 +179,11 @@ def expand_list_from_file(string):
 
     location = os.path.expanduser(string)
     if not os.path.exists(location):
-        user_error("Hosts file '{}' does not exist".format(location))
+        raise CFRExitError("Hosts file '{}' does not exist".format(location))
     if not os.path.isfile(location):
-        user_error("'{}' is not a file".format(location))
+        raise CFRExitError("'{}' is not a file".format(location))
     if not os.access(location, os.R_OK):
-        user_error("Cannot read '{}' - Permission denied".format(location))
+        raise CFRExitError("Cannot read '{}' - Permission denied".format(location))
 
     with open(location, "r") as f:
         hosts = [line.strip() for line in f if line.strip()]

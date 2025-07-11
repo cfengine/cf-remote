@@ -11,7 +11,7 @@ from cf_remote.utils import (
     parse_envfile,
     pretty,
     programmer_error,
-    user_error,
+    CFRExitError,
     parse_systeminfo,
     parse_version,
     ChecksumError,
@@ -363,7 +363,7 @@ def uninstall_cfengine(host, data, *, connection=None, purge=False):
             sudo=True,
         )
     else:
-        user_error("I don't know how to uninstall there!")
+        raise CFRExitError("I don't know how to uninstall there!")
 
     run_command(host, "pkill -U cfapache || true", connection=connection, sudo=True)
     run_command(
@@ -664,7 +664,7 @@ def deploy_masterfiles(host, tarball, *, connection=None):
         if ssh_cmd(connection, "command -v /var/cfengine/bin/cf-agent"):
             cfagent_path = "/var/cfengine/bin/"
         else:
-            user_error("Cannot find the path to cf-agent.")
+            raise CFRExitError("Cannot find the path to cf-agent.")
 
     commands = [
         "rm -rf /var/cfengine/masterfiles.delete",

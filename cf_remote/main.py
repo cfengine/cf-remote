@@ -8,6 +8,7 @@ from cf_remote import commands, paths
 from cf_remote.utils import (
     CFRExitError,
     CFRProgrammerError,
+    CFRUserError,
     exit_success,
     expand_list_from_file,
     is_file_string,
@@ -620,6 +621,8 @@ def main() -> int:
         r = _main()
         assert type(r) is int
         return r
+    except CFRUserError as e:
+        print("Error: " + str(e))
     except CFRExitError as e:
         print("Error: " + str(e))
     except (AssertionError, CFRProgrammerError) as e:

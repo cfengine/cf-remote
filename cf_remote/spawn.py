@@ -77,8 +77,9 @@ class VM:
                 print("Don't know which driver to use: %s" % _DRIVERS.keys())
                 return None
 
-        assert driver is not None, "TODO: How does this happen?"
-        nodes = nodes or driver.list_nodes()
+        if not nodes:
+            assert driver is not None
+            nodes = driver.list_nodes()
         for node in nodes:
             if node.state in (0, "running") and (
                 ip in node.public_ips or ip in node.private_ips
@@ -96,8 +97,9 @@ class VM:
                 print("Don't know which driver to use: %s" % _DRIVERS.keys())
                 return None
 
-        assert driver is not None, "TODO: How does this happen?"
-        nodes = nodes or driver.list_nodes()
+        if not nodes:
+            assert driver is not None
+            nodes = driver.list_nodes()
         for node in nodes:
             if node.state in (0, "running") and node.name == name:
                 return cls(node.name, driver, node)
@@ -113,8 +115,9 @@ class VM:
                 print("Don't know which driver to use: %s" % _DRIVERS.keys())
                 return None
 
-        assert driver is not None, "TODO: How does this happen?"
-        nodes = nodes or driver.list_nodes()
+        if not nodes:
+            assert driver is not None
+            nodes = driver.list_nodes()
         for node in nodes:
             if node.uuid == uuid:
                 return cls(node.name, driver, node)

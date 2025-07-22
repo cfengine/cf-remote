@@ -219,7 +219,7 @@ def _get_arg_parser():
         action="store_true",
     )
     sp.add_argument("--platform", help="Platform to use", type=str)
-    sp.add_argument("--count", help="How many hosts to spawn", type=int)
+    sp.add_argument("--count", default=1, help="How many hosts to spawn", type=int)
     sp.add_argument(
         "--role", help="Role of the hosts", choices=["hub", "hubs", "client", "clients"]
     )

@@ -1,10 +1,13 @@
 import hashlib
 import os
 import shutil
+import glob
 import sys
 import re
 import json
 import getpass
+import tempfile
+import fcntl
 from collections import OrderedDict
 from cf_remote import log
 from datetime import datetime
@@ -226,15 +229,56 @@ def print_progress_dot(*args):
     sys.stdout.flush()  # STDOUT is line-buffered
 
 
+# atomic copy, see lock-free whack-a-mole algorithm
+# https://www.cl.cam.ac.uk/techreports/UCAM-CL-TR-697.pdf#page=66
 def copy_file(input_path, output_path):
-    filename = os.path.basename(input_path)
-    output_dir = os.path.dirname(output_path)
+    assert not input_path.endswith("/")
 
-    tmp_filename = ".{}.tmp".format(filename)
-    tmp_output_path = os.path.join(output_dir, tmp_filename)
+    output_filename = os.path.basename(output_path)
+    if not output_filename:
+        output_filename = os.path.basename(input_path)
 
-    shutil.copyfile(input_path, tmp_output_path)
-    os.rename(tmp_output_path, output_path)
+    output_dirname = os.path.dirname(output_path)
+    tmp_fd, tmp_path = tempfile.mkstemp(
+        ".tmp", "{}-".format(output_filename), output_dirname
+    )
+
+    # copy input content to tmp
+
+    with open(input_path, "r") as input_file:
+        input_fd = input_file.fileno()
+
+        fcntl.flock(input_fd, fcntl.LOCK_SH)
+        shutil.copy(input_path, tmp_path)
+        fcntl.flock(input_fd, fcntl.LOCK_UN)
+
+    # rename tmp to tmp.mole
+
+    my_mole = "{}.mole".format(tmp_path)
+    os.rename(tmp_path, my_mole)
+    os.close(tmp_fd)
+
+    glob_pattern = "{}-*.tmp.mole".format(output_filename)
+    moles = glob.glob(os.path.join(output_dirname, glob_pattern))
+    for mole in moles:
+        mole = os.path.join(output_dirname, mole)
+        if mole == my_mole:
+            continue
+
+        mole_to_whack, my_mole = sorted((mole, my_mole))
+        try:
+            os.remove(mole_to_whack)
+        except OSError:
+            pass
+    try:
+        with open(output_path, "a") as output_file:
+            output_fd = output_file.fileno()
+
+            fcntl.flock(output_fd, fcntl.LOCK_EX)
+            os.rename(my_mole, output_path)
+            fcntl.flock(output_fd, fcntl.LOCK_UN)
+    except OSError:
+        pass
 
 
 def is_different_checksum(checksum, content):

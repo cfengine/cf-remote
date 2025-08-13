@@ -1,4 +1,7 @@
-from cf_remote.utils import has_unescaped_character, parse_envfile
+import os
+import shutil
+from multiprocessing import Pool
+from cf_remote.utils import has_unescaped_character, parse_envfile, copy_file
 
 
 def test_parse_envfile():
@@ -45,3 +48,44 @@ def test_has_unescaped_character():
     assert not has_unescaped_character(r"\"test\"", '"')
     assert has_unescaped_character(r'hello"world', '"')
     assert has_unescaped_character(r'hello\""world', '"')
+
+
+def copy_file_with_args(args):
+    src, dest = args
+    copy_file(src, dest)
+
+
+def test_copy_file():
+
+    src_dir = "/tmp/cf-remote-test-src/"
+    dest_dir = "/tmp/cf-remote-test-dest/"
+    os.makedirs(src_dir, exist_ok=True)
+    os.makedirs(dest_dir, exist_ok=True)
+
+    src_file = "myfile.txt"
+    dest_file = "copy.txt"
+
+    src = os.path.join(src_dir, src_file)
+    dest = os.path.join(dest_dir, dest_file)
+
+    with open(src, "w") as f:
+        f.write("This is a test file for atomic copy.")
+
+    num_processes = 10
+
+    with Pool(num_processes) as copy_pool:
+        copy_pool.map(copy_file_with_args, [(src, dest) for _ in range(num_processes)])
+
+    content = None
+    try:
+        with open(dest, "r") as f:
+            content = f.read()
+    except:
+        assert False
+
+    assert content
+    assert content == "This is a test file for atomic copy."
+    assert os.listdir(dest_dir) == [dest_file]
+
+    shutil.rmtree(src_dir)
+    shutil.rmtree(dest_dir)

@@ -287,7 +287,7 @@ def install_package(host, pkg, data, *, connection=None):
     print("Installing: '{}' on '{}'".format(pkg, host))
     output = None
     if ".deb" in pkg:
-        output = ssh_sudo(connection, 'dpkg -i "{}"'.format(pkg), True)
+        output = ssh_sudo(connection, 'dpkg -i "{}"'.format(pkg), True, needs_pty=True)
     elif ".msi" in pkg:
         # Windows is crazy, be careful if you decide to change this;
         # This needs to work in both powershell and cmd, and in
@@ -297,7 +297,9 @@ def install_package(host, pkg, data, *, connection=None):
         output = ssh_cmd(connection, powershell(r".\{} ; sleep 10".format(pkg)), True)
     elif ".rpm" in pkg:
         if "yum" in data["bin"]:
-            output = ssh_sudo(connection, "yum -y install {}".format(pkg), True)
+            output = ssh_sudo(
+                connection, "yum -y install {}".format(pkg), True, needs_pty=True
+            )
         elif "zypper" in data["bin"]:  # suse case
             allow_unsigned = (
                 ""
@@ -306,7 +308,10 @@ def install_package(host, pkg, data, *, connection=None):
                 else "--allow-unsigned-rpm"
             )
             output = ssh_sudo(
-                connection, "zypper install -y {} {}".format(allow_unsigned, pkg), True
+                connection,
+                "zypper install -y {} {}".format(allow_unsigned, pkg),
+                True,
+                needs_pty=True,
             )
         else:
             log.error(

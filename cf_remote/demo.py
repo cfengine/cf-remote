@@ -6,6 +6,32 @@ from cf_remote.paths import cf_remote_dir
 from cf_remote.utils import save_file
 from cf_remote.ssh import scp, ssh_sudo, ssh_cmd, auto_connect
 
+SET_ADMIN_PASSWORD_QUERY = """UPDATE
+       \"system\"
+SET
+       \"value\" = 'true'
+WHERE
+       \"key\" = 'is_setup_complete';
+INSERT
+INTO
+       \"users\"
+       (\"username\", \"password\", \"salt\", \"name\", \"email\", \"external\", \"active\", \"roles\", \"changetimestamp\") SELECT
+       'admin',
+       'SHA=7f062dc2ef82d2b87f012fc17d70c372aa4e2883d9b6c5c1cc7382a5c868b724',
+       'eWAbKQmxNP',
+       'admin',
+       'admin@organisation.com',
+       false,
+       '1',
+       '{admin,cf_remoteagent}',
+       now()
+              ON CONFLICT (username,
+              external) DO UPDATE
+
+       SET
+              password = 'SHA=7f062dc2ef82d2b87f012fc17d70c372aa4e2883d9b6c5c1cc7382a5c868b724',
+              salt = 'eWAbKQmxNP';"""
+
 
 @auto_connect
 def agent_run(data, *, connection=None):
@@ -21,15 +47,13 @@ def agent_run(data, *, connection=None):
     log.debug(output)
 
 
-def disable_password_dialog(host):
+@auto_connect
+def disable_password_dialog(host, *, connection=None):
     print("Disabling password change on hub: '{}'".format(host))
-    api = "https://{}/api/user/admin".format(host)
-    d = json.dumps({"password": "password"})
-    creds = "admin:admin"
-    header = "Content-Type: application/json"
-    c = "curl -X POST  -k {} -u {}  -H '{}' -d '{}'".format(api, creds, header, d)
-    log.debug(c)
-    os.system(c)
+    ssh_sudo(
+        connection,
+        '/var/cfengine/bin/psql cfsettings -c "{}"'.format(SET_ADMIN_PASSWORD_QUERY),
+    )
 
 
 def def_json(call_collect=False):

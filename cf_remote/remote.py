@@ -325,6 +325,10 @@ def install_package(host, pkg, data, *, connection=None):
 
     if output is None:
         log.error("Installation failed on '{}'".format(host))
+    else:
+        m = re.search(r"\#+[^\#]+\#+", output)  # filtrate out junk output
+        if m:
+            print("\n{}\n".format(m.group(0)))
 
     return output is not None
 

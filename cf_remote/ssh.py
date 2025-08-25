@@ -197,8 +197,11 @@ def scp(file, remote, connection=None, rename=None, hide=False):
     return 0
 
 
-def ssh_cmd(connection, cmd, errors=False):
+def ssh_cmd(connection, cmd, errors=False, needs_pty=True):
     assert connection
+
+    if needs_pty:
+        cmd = 'script -qec "%s" /dev/null' % cmd
 
     result = connection.run(cmd, hide=True)
     if result.retcode == 0:
@@ -218,15 +221,18 @@ def ssh_cmd(connection, cmd, errors=False):
         return None
 
 
-def ssh_sudo(connection, cmd, errors=False):
+def ssh_sudo(connection, cmd, errors=False, needs_pty=False):
     assert connection
 
     if connection.needs_sudo:
         escaped = cmd.replace('"', r"\"")
-        sudo_cmd = 'sudo bash -c "%s"' % escaped
-        result = connection.run(sudo_cmd, hide=True)
-    else:
-        result = connection.run(cmd, hide=True)
+        cmd = "sudo %s" % escaped
+
+    if needs_pty:
+        cmd = 'script -qec "%s" /dev/null' % cmd
+
+    result = connection.run(cmd, hide=True)
+
     if result.retcode == 0:
         output = result.stdout.strip("\n")
         log.debug("'%s' -> '%s'" % (cmd, output))

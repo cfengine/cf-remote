@@ -476,7 +476,7 @@ def is_in_cloud_state(name):
         return False
     # else
     state = read_json(paths.CLOUD_STATE_FPATH)
-    assert state, "Failed reading from '{}'".format(paths.CLOUD_STATE_FPATH)
+    assert state is not None, "Failed reading from '{}'".format(paths.CLOUD_STATE_FPATH)
     if name in state:
         return True
     if ("@" + name) in state:

@@ -225,8 +225,7 @@ def ssh_sudo(connection, cmd, errors=False, needs_pty=False):
     assert connection
 
     if connection.needs_sudo:
-        escaped = cmd.replace('"', r"\"")
-        cmd = "sudo %s" % escaped
+        cmd = "sudo %s" % cmd
 
     if needs_pty:
         cmd = 'script -qec "%s" /dev/null' % cmd

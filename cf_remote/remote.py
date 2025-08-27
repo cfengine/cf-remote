@@ -283,7 +283,7 @@ def get_info(host, *, users=None, connection=None):
 
 
 @auto_connect
-def install_package(host, pkg, data, *, connection=None):
+def install_package(host, pkg, data, demo, *, connection=None):
     print("Installing: '{}' on '{}'".format(pkg, host))
     output = None
     if ".deb" in pkg:
@@ -325,7 +325,7 @@ def install_package(host, pkg, data, *, connection=None):
 
     if output is None:
         log.error("Installation failed on '{}'".format(host))
-    else:
+    elif not demo:
         m = re.search(r"\#+[^\#]+\#+", output)  # filtrate out junk output
         if m:
             print("\n{}\n".format(m.group(0)))
@@ -567,7 +567,7 @@ def install_host(
         scp(package, host, connection=connection)
         package = basename(package)
 
-    success = install_package(host, package, data, connection=connection)
+    success = install_package(host, package, data, demo, connection=connection)
     if not success:
         # errors already logged
         return 1
@@ -613,7 +613,7 @@ def install_host(
                 host, connection=connection, call_collect=call_collect
             )
             demo_lib.agent_run(data, connection=connection)
-            demo_lib.disable_password_dialog(host)
+            demo_lib.disable_password_dialog(host, connection=connection)
         demo_lib.agent_run(data, connection=connection)
     return 0
 

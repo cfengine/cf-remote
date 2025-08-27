@@ -182,6 +182,13 @@ def install(
     assert (trust_keys is None) or hasattr(trust_keys, "__iter__")
     # These assertions are checked/ensured in main.py
 
+    if demo and not bootstrap:
+        log.error(
+            "Cannot start a demo on a non-bootstrapped host (CFEngine would be installed but not started)."
+            "Please re-run cf-remote install with --bootstrap <hub_name>."
+        )
+        return 1
+
     # If there are URLs in any of the package strings and remote_download is FALSE, download and replace with path:
     packages = (package, hub_package, client_package)
     if remote_download:

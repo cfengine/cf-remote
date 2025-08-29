@@ -103,6 +103,11 @@ def _get_arg_parser():
         + " (implies '--trust-server no' when boostraping)",
         type=str,
     )
+    sp.add_argument(
+        "--insecure",
+        help="Ignore mismatching checksums when downloading urls",
+        action="store_true",
+    )
 
     sp = subp.add_parser("uninstall", help="Uninstall CFEngine on the given hosts")
     sp.add_argument("--purge", help="Complete uninstallation", action="store_true")
@@ -141,6 +146,12 @@ def _get_arg_parser():
     sp.add_argument("tags", metavar="TAG", nargs="*")
 
     sp.add_argument("--output-dir", "-o", help="Where to download", type=str)
+
+    sp.add_argument(
+        "--insecure",
+        help="Ignore mismatching checksums when downloading urls",
+        action="store_true",
+    )
 
     sp = subp.add_parser(
         "run", help="Run the command given as arguments on the given hosts"
@@ -312,6 +323,7 @@ def run_command_with_args(command, args) -> int:
             edition=args.edition,
             remote_download=args.remote_download,
             trust_keys=trust_keys,
+            insecure=args.insecure,
         )
     elif command == "uninstall":
         all_hosts = (args.hosts or []) + (args.hub or []) + (args.clients or [])
@@ -333,6 +345,7 @@ def run_command_with_args(command, args) -> int:
             version=args.version,
             edition=args.edition,
             output_dir=args.output_dir,
+            insecure=args.insecure,
         )
     elif command == "run":
         return commands.run(hosts=args.hosts, raw=args.raw, command=args.remote_command)

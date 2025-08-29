@@ -3,6 +3,7 @@ import fcntl
 import re
 import urllib.request
 import json
+import tempfile
 from collections import OrderedDict
 from cf_remote.utils import (
     is_different_checksum,
@@ -30,7 +31,39 @@ def get_json(url):
     return data
 
 
-def download_package(url, path=None, checksum=None):
+def has_downloaded_package(path, filename, checksum, insecure):
+    # Use "ab" to prevent truncation of the file in case it is already being
+    # downloaded by a different thread.
+    with open(path, "ab+") as f:
+        # Get an exclusive lock. If the file size is != 0 then it's already
+        # downloaded, otherwise we download.
+        fcntl.flock(f.fileno(), fcntl.LOCK_SH)
+        st = os.stat(path)
+        if st.st_size != 0:
+            print("Package '{}' already downloaded".format(path))
+
+            f.seek(0)
+            content = f.read()
+            if checksum and is_different_checksum(checksum, content):
+                log.warning(
+                    "Downloaded file '{}' does not match expected checksum '{}'. ".format(
+                        filename, checksum
+                    )
+                )
+                if insecure:
+                    log.warning("Continuing due to insecure flag")
+                    fcntl.flock(f.fileno(), fcntl.LOCK_UN)
+                    return True
+            else:
+                fcntl.flock(f.fileno(), fcntl.LOCK_UN)
+                return True
+
+        fcntl.flock(f.fileno(), fcntl.LOCK_UN)
+    return False
+
+
+def download_package(url, path=None, checksum=None, insecure=False):
+    print(insecure)
     assert path is None or type(path) is str and len(path) > 0
 
     if checksum and not SHA256_RE.match(checksum):
@@ -48,39 +81,39 @@ def download_package(url, path=None, checksum=None):
     filename = os.path.basename(path)
     assert type(filename) is str and len(filename) > 0
 
-    # Use "ab" to prevent truncation of the file in case it is already being
-    # downloaded by a different thread.
-    with open(path, "ab+") as f:
-        # Get an exclusive lock. If the file size is != 0 then it's already
-        # downloaded, otherwise we download.
-        fcntl.flock(f.fileno(), fcntl.LOCK_EX)
-        st = os.stat(path)
-        if st.st_size != 0:
-            print("Package '{}' already downloaded".format(path))
+    if has_downloaded_package(path, filename, checksum, insecure):
+        return path
 
-            f.seek(0)
-            content = f.read()
-            if checksum and is_different_checksum(checksum, content):
-                raise CFRChecksumError(
-                    "Downloaded file '{}' does not match expected checksum '{}'. Please delete the file.".format(
-                        filename, checksum
-                    )
+    print("Downloading package: '{}'".format(path))
+    fd, tmp = tempfile.mkstemp()
+    answer = urllib.request.urlopen(url).read()
+    os.write(fd, answer)
+    os.close(fd)
+
+    if checksum and is_different_checksum(checksum, answer):
+
+        if not insecure:
+            log.debug("Mismatching checksums. Removing '{}'".format(tmp))
+            os.remove(tmp)
+            raise CFRChecksumError(
+                "Temp file '{}' does not match expected checksum '{}'.".format(
+                    tmp, checksum
                 )
-
+            )
         else:
-            print("Downloading package: '{}'".format(path))
-
-            answer = urllib.request.urlopen(url).read()
-            if checksum and is_different_checksum(checksum, answer):
-                raise CFRChecksumError(
-                    "Downloaded file '{}' does not match expected checksum '{}'. Please delete the file.".format(
-                        filename, checksum
-                    )
+            log.warning(
+                "Downloaded file '{}' does not match expected checksum '{}'. Continuing due to insecure flag".format(
+                    filename, checksum
                 )
+            )
+    else:
+        log.debug("Matching checksums. Renaming '{}' to '{}'".format(tmp, path))
 
-            f.write(answer)
-            f.flush()
+    with open(path, "a") as f:
+        fd = f.fileno()
 
-        fcntl.flock(f.fileno(), fcntl.LOCK_UN)
+        fcntl.flock(fd, fcntl.LOCK_EX)
+        os.rename(tmp, path)
+        fcntl.flock(fd, fcntl.LOCK_UN)
 
     return path

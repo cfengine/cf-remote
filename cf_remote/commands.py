@@ -98,7 +98,7 @@ def scp(hosts, files, users=None):
     return errors
 
 
-def _download_urls(urls):
+def _download_urls(urls, insecure):
     """Download packages from URLs, replace URLs with filenames
 
     Return a new list of packages where URLs are replaced with paths
@@ -130,7 +130,7 @@ def _download_urls(urls):
                 "2 packages with the same name '%s' from different URLs" % name
             )
 
-        download_package(url, path)
+        download_package(url, path, insecure)
         downloaded_urls.append(url)
         downloaded_paths.append(path)
 
@@ -175,7 +175,8 @@ def install(
     call_collect=False,
     edition=None,
     remote_download=False,
-    trust_keys=None
+    trust_keys=None,
+    insecure=False
 ):
     assert hubs or clients
     assert not (hubs and clients and package)
@@ -195,7 +196,7 @@ def install(
         package, hub_package, client_package = _verify_package_urls(packages)
     else:
         try:
-            package, hub_package, client_package = _download_urls(packages)
+            package, hub_package, client_package = _download_urls(packages, insecure)
         except CFRChecksumError as ce:
             log.error(ce)
             return 1
@@ -239,6 +240,7 @@ def install(
                     show_info=show_host_info,
                     remote_download=remote_download,
                     trust_keys=trust_keys,
+                    insecure=insecure,
                 )
             )
 
@@ -298,7 +300,12 @@ def install(
 
 
 def _iterate_over_packages(
-    tags=None, version=None, edition=None, download=False, output_dir=None
+    tags=None,
+    version=None,
+    edition=None,
+    download=False,
+    output_dir=None,
+    insecure=False,
 ):
     assert edition in ["enterprise", "community", None]
     releases = Releases(edition)
@@ -330,7 +337,7 @@ def _iterate_over_packages(
             if download:
                 try:
                     package_path = download_package(
-                        artifact.url, checksum=artifact.checksum
+                        artifact.url, checksum=artifact.checksum, insecure=insecure
                     )
                 except CFRChecksumError as ce:
                     log.error(ce)
@@ -361,8 +368,8 @@ def list_command(tags=None, version=None, edition=None):
     return _iterate_over_packages(tags, version, edition, False)
 
 
-def download(tags=None, version=None, edition=None, output_dir=None):
-    return _iterate_over_packages(tags, version, edition, True, output_dir)
+def download(tags=None, version=None, edition=None, output_dir=None, insecure=False):
+    return _iterate_over_packages(tags, version, edition, True, output_dir, insecure)
 
 
 def _get_aws_creds_from_env():
@@ -900,7 +907,7 @@ def deploy(hubs, masterfiles):
     elif masterfiles and masterfiles.startswith(("http://", "https://")):
         urls = [masterfiles]
         try:
-            paths = _download_urls(urls)
+            paths = _download_urls(urls, insecure=False)
         except CFRChecksumError as ce:
             log.error(ce)
             return 1

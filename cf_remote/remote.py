@@ -420,7 +420,9 @@ def _package_from_list(tags, extension, packages):
     return artifact.url
 
 
-def _package_from_releases(tags, extension, version, edition, remote_download):
+def _package_from_releases(
+    tags, extension, version, edition, remote_download, insecure
+):
     log.debug("Looking for a package from releases based on host tags: {}".format(tags))
     releases = Releases(edition)
     release = releases.default
@@ -452,7 +454,9 @@ def _package_from_releases(tags, extension, version, edition, remote_download):
     if remote_download:
         return artifact.url
     else:
-        return download_package(artifact.url, checksum=artifact.checksum)
+        return download_package(
+            artifact.url, checksum=artifact.checksum, insecure=insecure
+        )
 
 
 def get_package_from_host_info(
@@ -464,6 +468,7 @@ def get_package_from_host_info(
     edition: Union[str, None] = "enterprise",
     packages=None,
     remote_download=False,
+    insecure=False,
 ):
     assert edition in ["enterprise", "community", None]
     if edition is None:
@@ -495,7 +500,7 @@ def get_package_from_host_info(
 
     if packages is None:  # No command line argument given
         package = _package_from_releases(
-            tags, extension, version, edition, remote_download
+            tags, extension, version, edition, remote_download, insecure
         )
     else:
         package = _package_from_list(tags, extension, packages)
@@ -517,7 +522,8 @@ def install_host(
     edition: Union[str, None] = None,
     show_info=True,
     remote_download=False,
-    trust_keys=None
+    trust_keys=None,
+    insecure=False
 ):
     data = get_info(host, connection=connection)
     if show_info:
@@ -540,6 +546,7 @@ def install_host(
                 edition,
                 packages,
                 remote_download,
+                insecure,
             )
         except CFRChecksumError as ce:
             log.error(ce)

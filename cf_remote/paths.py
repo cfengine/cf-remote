@@ -42,3 +42,7 @@ CLOUD_CONFIG_FNAME = "cloud_config.json"
 CLOUD_CONFIG_FPATH = cf_remote_file(CLOUD_CONFIG_FNAME)
 CLOUD_STATE_FNAME = "cloud_state.json"
 CLOUD_STATE_FPATH = cf_remote_file(CLOUD_STATE_FNAME)
+SSH_CONFIG_FNAME = "cf_remote_ssh_config"
+SSH_CONFIG_FPATH = cf_remote_file(SSH_CONFIG_FNAME)
+SSH_CONFIGS_JSON_FNAME = "ssh_configs.json"
+SSH_CONFIGS_JSON_FPATH = cf_remote_file(SSH_CONFIGS_JSON_FNAME)

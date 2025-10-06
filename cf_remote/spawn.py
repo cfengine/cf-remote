@@ -1,9 +1,15 @@
 from datetime import datetime
+from posixpath import dirname, join
 import string
 import random
+import os
+import subprocess
+import json
+import shutil
 from collections import namedtuple
 from enum import Enum
 from multiprocessing.dummy import Pool
+from pathlib import Path
 
 from libcloud.common.types import InvalidCredsError
 from libcloud.compute.types import Provider
@@ -13,10 +19,12 @@ from libcloud.compute.drivers.ec2 import EC2NodeDriver
 from libcloud.compute.drivers.gce import GCENodeDriver
 
 from cf_remote.cloud_data import aws_image_criteria, aws_defaults
-from cf_remote.utils import whoami
+from cf_remote.paths import cf_remote_dir, CLOUD_STATE_FPATH
+from cf_remote.utils import whoami, copy_file, canonify, read_json
 from cf_remote import log
 from cf_remote import cloud_data
 
+VAGRANT_VM_IP_START = "192.168.56.9"
 _NAME_RANDOM_PART_LENGTH = 4
 
 AWSCredentials = namedtuple("AWSCredentials", ["key", "secret", "token"])
@@ -33,6 +41,7 @@ _DRIVERS = {}
 class Providers(Enum):
     AWS = 1
     GCP = 2
+    VAGRANT = 3
 
     def __str__(self):
         return self.name.lower()
@@ -43,6 +52,55 @@ class MissingInfoError(ValueError):
 
 
 class VM:
+
+    def __init__(self, name, role, platform, size, user, provider):
+        self._name = name
+        self._platform = platform
+        self._size = size
+        self._user = user
+        self._provider = provider
+        self.role = role
+
+    @property
+    def platform(self):
+        return self._platform
+
+    @property
+    def name(self):
+        return self._name
+
+    @property
+    def size(self):
+        return self._size
+
+    @property
+    def user(self):
+        return self._user
+
+    @property
+    def provider(self):
+        return self._provider
+
+    @property
+    def info(self):
+        ret = {
+            "platform": self.platform,
+            "size": self.size,
+        }
+        if self.user:
+            ret["user"] = self.user
+        if self.role:
+            ret["role"] = self.role
+        if self.provider:
+            ret["provider"] = str(self.provider)
+
+        return ret
+
+    def __str__(self):
+        return "%s: %s" % (self.name, self.info)
+
+
+class CloudVM(VM):
     def __init__(
         self,
         name,
@@ -56,16 +114,11 @@ class VM:
         user=None,
         provider=None,
     ):
-        self._name = name
+        super().__init__(name, role, platform, size, user, provider)
         self._driver = driver
         self._node = node
-        self._platform = platform
-        self._size = size
         self._key_pair = key_pair
         self._sec_groups = security_groups
-        self._user = user
-        self.role = role
-        self._provider = provider
 
     @classmethod
     def get_by_ip(cls, ip, driver=None, nodes=None):
@@ -151,10 +204,6 @@ class VM:
         return None
 
     @property
-    def name(self):
-        return self._name
-
-    @property
     def uuid(self):
         assert self._node is not None
         return self._node.uuid
@@ -162,10 +211,6 @@ class VM:
     @property
     def driver(self):
         return self._driver
-
-    @property
-    def platform(self):
-        return self._platform
 
     @property
     def region(self):
@@ -185,24 +230,12 @@ class VM:
             return str(region)
 
     @property
-    def size(self):
-        return self._size
-
-    @property
     def key_pair(self):
         return self._key_pair
 
     @property
     def security_groups(self):
         return self._sec_groups
-
-    @property
-    def user(self):
-        return self._user
-
-    @property
-    def provider(self):
-        return self._provider
 
     @property
     def _data(self):
@@ -244,24 +277,17 @@ class VM:
 
     @property
     def info(self):
-        ret = {
-            "platform": self.platform,
+        ret = super().info
+        ret |= {
             "region": self.region,
-            "size": self.size,
             "private_ips": self.private_ips,
             "public_ips": self.public_ips,
             "uuid": self.uuid,
         }
-        if self.user:
-            ret["user"] = self.user
-        if self.role:
-            ret["role"] = self.role
         if self.key_pair:
             ret["key_pair"] = self.key_pair
         if self.security_groups:
             ret["security_groups"] = self.security_groups
-        if self.provider:
-            ret["provider"] = str(self.provider)
         return ret
 
     def __str__(self):
@@ -464,7 +490,7 @@ def spawn_vm_in_aws(
             % (platform, ami, size, e)
         )
 
-    return VM(
+    return CloudVM(
         name,
         driver,
         node,
@@ -517,7 +543,9 @@ def spawn_vm_in_gcp(
 
     assert isinstance(driver, GCENodeDriver)
     node = driver.create_node(name, size, platform, **kwargs)
-    return VM(name, driver, node, role, platform, size, None, None, None, Providers.GCP)
+    return CloudVM(
+        name, driver, node, role, platform, size, None, None, None, Providers.GCP
+    )
 
 
 class GCPSpawnTask:
@@ -556,8 +584,11 @@ def spawn_vms(
     network=None,
     role=None,
     spawned_cb=None,
+    vagrant_cpus=None,
+    vagrant_sync_folder=None,
+    vagrant_provision=None,
 ):
-    if provider not in (Providers.AWS, Providers.GCP):
+    if provider not in (Providers.AWS, Providers.GCP, Providers.VAGRANT):
         raise ValueError("Unsupported provider %s" % provider)
 
     if (provider == Providers.AWS) and (key_pair is None):
@@ -581,6 +612,17 @@ def spawn_vms(
             if spawned_cb is not None:
                 spawned_cb(vm)
             ret.append(vm)
+    elif provider == Providers.VAGRANT:
+        ret = spawn_vm_in_vagrant(
+            vm_requests[0].name,
+            vm_requests[0].platform,
+            len(vm_requests),
+            role,
+            cpus=vagrant_cpus,
+            memory=size,
+            sync_folder=vagrant_sync_folder,
+            provision_script=vagrant_provision,
+        )
     else:
         tasks = [
             GCPSpawnTask(
@@ -611,8 +653,17 @@ def spawn_vms(
 def destroy_vms(vms):
     if not vms:
         return
+
+    folders = set(vm.vmdir for vm in vms if getattr(vm, "vmdir", False))
+
     with Pool(len(vms)) as pool:
         pool.map(lambda vm: vm.destroy(), vms)
+
+    try:
+        for f in folders:
+            shutil.rmtree(f)
+    except:
+        pass
 
 
 def dump_vms_info(vms):
@@ -635,3 +686,167 @@ def dump_vms_info(vms):
             del info[key]
         ret[vm.name] = info
     return ret
+
+
+class VagrantVM(VM):
+
+    def __init__(self, name, ip, vmdir, platform, role, size, cpus, sync_folder):
+        super().__init__(name, role, platform, size, "vagrant", Providers.VAGRANT)
+
+        self.public_ips = [ip]
+        self.region = None
+        self.vmdir = vmdir
+        self.cpus = cpus
+        self.sync_folder = sync_folder
+
+        log.debug(
+            "Created VM with the following information: \n\t- {}\n\t- {}\n\t- {}\n\t- {}".format(
+                name, ip, vmdir, sync_folder
+            )
+        )
+
+    @property
+    def info(self):
+        ret = super().info
+        ret |= {
+            "private_ips": [],
+            "public_ips": self.public_ips,
+            "vmdir": self.vmdir,
+            "cpus": self.cpus,
+            "region": self.region,
+        }
+        if self.sync_folder:
+            ret["sync_folder"] = self.sync_folder
+
+        return ret
+
+    @classmethod
+    def get_by_info(cls, name, info):
+        return cls(
+            name,
+            info["public_ips"][0],
+            info["vmdir"],
+            info["platform"],
+            info["role"],
+            info["size"],
+            info["cpus"],
+            info.get("sync_folder", None),
+        )
+
+    def destroy(self):
+
+        vagrant_env = os.environ.copy()
+        vagrant_env["VAGRANT_CWD"] = self.vmdir
+
+        return subprocess.run(
+            ["vagrant", "destroy", "-f", self.name], env=vagrant_env
+        ).returncode
+
+
+def get_last_vagrant_ip_address():
+    state = read_json(CLOUD_STATE_FPATH)
+
+    if not state:
+        return VAGRANT_VM_IP_START
+
+    ip = VAGRANT_VM_IP_START
+
+    for group in state.values():
+        if group["meta"]["provider"] != "vagrant":
+            continue
+        for host, info in group.items():
+            if host == "meta":
+                continue
+
+            ip = min(ip, info["public_ips"][0])
+
+    return ip
+
+
+def spawn_vm_in_vagrant(
+    name,
+    box,
+    count,
+    role,
+    cpus=None,
+    memory=None,
+    sync_folder=None,
+    provision_script=None,
+):
+    name = canonify(name).replace("_", "-")
+    vagrantdir = cf_remote_dir(os.path.join("vagrant", name))
+    os.makedirs(vagrantdir, exist_ok=True)
+
+    # Copy Vagrantfile to .cfengine/cf-remote/vagrant
+    vagrantfile = join(dirname(__file__), "Vagrantfile")
+    copy_file(vagrantfile, os.path.join(vagrantdir, "Vagrantfile"))
+
+    if cpus is None:
+        cpus = 1
+    if memory is None:
+        memory = 1024
+
+    bootstrap = os.path.join(vagrantdir, "bootstrap.sh")
+    if provision_script is None:
+        Path(bootstrap).touch(exist_ok=True)
+    else:
+        copy_file(provision_script, bootstrap)
+
+    config = {
+        "box": box,
+        "count": count,
+        "memory": memory,
+        "cpus": cpus,
+        "provision": bootstrap,
+        "name": name,
+        "sync_folder": sync_folder,
+    }
+
+    log.debug("Saving the vagrant VM config")
+    log.debug("Config: {}".format(json.dumps(config, indent=2)))
+    with open(os.path.join(vagrantdir, "config.json"), "w") as f:
+        json.dump(config, f, indent=4)
+
+    if sync_folder:
+        log.debug(
+            "'{}' on host is rsynched to '/synched_folder' on VM".format(sync_folder)
+        )
+
+    # Prepare command
+    command_args = ["vagrant", "up"]
+    vagrant_env = os.environ.copy()
+    vagrant_env["VAGRANT_CWD"] = vagrantdir
+
+    if provision_script is None:
+        command_args.append("--no-provision")
+
+    log.debug("Starting the VM(s)")
+    result = subprocess.run(command_args, env=vagrant_env, stderr=subprocess.PIPE)
+
+    if result.returncode != 0:
+        raise Exception(result.stderr.decode())
+
+    log.debug("Copying vagrant ssh config")
+
+    ssh_config = os.path.join(vagrantdir, "vagrant-ssh-config")
+    with open(ssh_config, "w") as f:
+        subprocess.run(["vagrant", "ssh-config"], env=vagrant_env, stdout=f)
+
+    # Calculate IP addresses
+    base_ip = get_last_vagrant_ip_address()
+    start, end = base_ip.rsplit(".", maxsplit=1)
+    end = int(end) + 1
+
+    return [
+        VagrantVM(
+            "{}-{}".format(name, i + 1),
+            "{}.{}".format(start, end % 255),
+            vagrantdir,
+            box,
+            role,
+            memory,
+            cpus,
+            sync_folder,
+        )
+        for i in range(count)
+    ]

@@ -225,11 +225,14 @@ def _get_arg_parser():
         "--list-platforms", help="List supported platforms", action="store_true"
     )
     sp.add_argument(
+        "--list-boxes", help="List installed vagrant boxes", action="store_true"
+    )
+    sp.add_argument(
         "--init-config",
         help="Initialize configuration file for spawn functionality",
         action="store_true",
     )
-    sp.add_argument("--platform", help="Platform to use", type=str)
+    sp.add_argument("--platform", help="Platform or vagrant box to use", type=str)
     sp.add_argument("--count", default=1, help="How many hosts to spawn", type=int)
     sp.add_argument(
         "--role", help="Role of the hosts", choices=["hub", "hubs", "client", "clients"]
@@ -242,8 +245,24 @@ def _get_arg_parser():
         help="Append the new VMs to a pre-existing group",
         action="store_true",
     )
-    sp.add_argument("--aws", help="Spawn VMs in AWS (default)", action="store_true")
-    sp.add_argument("--gcp", help="Spawn VMs in GCP", action="store_true")
+    sp.add_argument(
+        "--provider",
+        help="VM provider",
+        type=str,
+        default="aws",
+        choices=["aws", "gcp", "vagrant"],
+    )
+    sp.add_argument("--cpus", help="Number of CPUs of the vagrant instances", type=int)
+    sp.add_argument(
+        "--sync-folder",
+        help="Root folder of synchronized folders of vagrant instance",
+        type=str,
+    )
+    sp.add_argument(
+        "--provision",
+        help="full path to provision shell script for Vagrant VM",
+        type=str,
+    )
     sp.add_argument("--size", help="Size/type of the instances", type=str)
     sp.add_argument(
         "--network", help="network/subnet to assign the VMs to (GCP only)", type=str
@@ -360,24 +379,39 @@ def run_command_with_args(command, args) -> int:
     elif command == "spawn":
         if args.list_platforms:
             return commands.list_platforms()
+        if args.list_boxes:
+            return commands.list_boxes()
         if args.init_config:
             return commands.init_cloud_config()
         if args.name and "," in args.name:
             raise CFRExitError("Group --name may not contain commas")
-        if args.aws and args.gcp:
-            raise CFRExitError("--aws and --gcp cannot be used at the same time")
         if args.role.endswith("s"):
             # role should be singular
             args.role = args.role[:-1]
-        if args.gcp:
+        if args.provider == "gcp":
             provider = Providers.GCP
-        else:
-            # AWS is currently also the default
+        elif args.provider == "aws":
             provider = Providers.AWS
             if args.network:
                 raise CFRExitError("--network not supported for AWS")
             if args.no_public_ip:
                 raise CFRExitError("--no-public-ip not supported for AWS")
+        else:
+            assert args.provider == "vagrant"
+            provider = Providers.VAGRANT
+
+        if provider != Providers.VAGRANT:
+            if args.cpus:
+                raise CFRExitError("--cpus not supported for {}".format(args.provider))
+            if args.sync_folder:
+                raise CFRExitError(
+                    "--sync-folder not supported for {}".format(args.provider)
+                )
+            if args.provision:
+                raise CFRExitError(
+                    "--provision not supported for {}".format(args.provider)
+                )
+
         if args.network and (args.network.count("/") != 1):
             raise CFRExitError(
                 "Invalid network specified, needs to be in the network/subnet format"
@@ -393,6 +427,9 @@ def run_command_with_args(command, args) -> int:
             network=args.network,
             public_ip=not args.no_public_ip,
             extend_group=args.append,
+            vagrant_cpus=args.cpus,
+            vagrant_sync_folder=args.sync_folder,
+            vagrant_provision=args.provision,
         )
     elif command == "show":
         return commands.show(args.ansible_inventory)
@@ -457,7 +494,12 @@ def validate_command(command, args):
             )
         args.remote_command = args.remote_command[0]
 
-    if command == "spawn" and not args.list_platforms and not args.init_config:
+    if (
+        command == "spawn"
+        and not args.list_platforms
+        and not args.init_config
+        and not args.list_boxes
+    ):
         # The above options don't require any other options/arguments (TODO:
         # --provider), but otherwise all have to be given
         if not args.platform:
@@ -524,22 +566,26 @@ def get_cloud_hosts(name, bootstrap_ips=False):
             if name == "meta":
                 continue
             log.debug("found name '{}' in state, info='{}'".format(name, info))
-            hosts.append(info)
+            hosts.append((name, info))
     else:
         if name in state:
             # host_name given and exists at the top level
-            hosts.append(state[name])
+            hosts.append((name, state[name]))
         else:
             for group_name in [key for key in state.keys() if key.startswith("@")]:
                 if name in state[group_name]:
-                    hosts.append(state[group_name][name])
+                    hosts.append((name, state[group_name][name]))
 
     ret = []
-    for host in hosts:
+    for name, host in hosts:
         if bootstrap_ips and "private_ips" in host:
             key = "private_ips"
         else:
             key = "public_ips"
+
+        if "vmdir" in host:
+            ret.append(name)
+            continue
 
         ips = host.get(key, [])
         if len(ips) > 0:

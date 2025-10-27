@@ -1,0 +1,68 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+require 'json'
+
+config_path = File.expand_path("../config.json", __FILE__)
+if !File.file?(config_path)
+  abort "Need a config file for this host at " + config_path
+end
+config = JSON.parse(File.read(config_path))
+
+VM_BOX = config['box']
+VM_COUNT = config['count']
+VM_MEMORY = config['memory']
+VM_CPUS = config['cpus']
+VM_PROVISION = File.expand_path(config['provision'], __FILE__)
+VM_NAME = config['name']
+SYNC_FOLDER = config['sync_folder']
+
+Vagrant.configure("2") do |config|
+
+  (1..VM_COUNT).each do |i|
+
+    config.vm.define "#{VM_NAME}-#{i}" do |node|
+      node.vm.hostname = "#{VM_NAME}-#{i}"
+      node.vm.network "private_network", ip: "192.168.56.#{9 + i}"
+      node.vm.box = VM_BOX
+
+      node.vm.provision "shell" do |s|
+        ssh_pub_key = File.readlines("#{Dir.home}/.ssh/id_rsa.pub").first.strip
+        s.inline = <<-SHELL
+        echo #{ssh_pub_key} >> /home/vagrant/.ssh/authorized_keys
+        echo #{ssh_pub_key} >> /root/.ssh/authorized_keys
+        SHELL
+      end
+      node.vm.provision "bootstrap", type: "shell", path: VM_PROVISION
+      node.vm.synced_folder  ".", "/vagrant",
+                  rsync__args: ["--verbose", "--archive", "--delete", "-z", "--links"]
+      if SYNC_FOLDER && !SYNC_FOLDER.empty?
+        node.vm.synced_folder "#{SYNC_FOLDER}", "/synched_folder",
+                    rsync__args: ["--verbose", "--archive", "--delete", "-z", "--links"]
+      end
+
+      # https://bugs.launchpad.net/cloud-images/+bug/1874453
+      NOW = Time.now.strftime("%d.%m.%Y.%H:%M:%S")
+      FILENAME = "serial-debug-%s.log" % NOW
+      node.vm.provider "virtualbox" do |vb|
+          vb.memory = VM_MEMORY
+          vb.cpus = VM_CPUS
+          vb.customize [ "guestproperty", "set", :id, "/VirtualBox/GuestAdd/VBoxService/--timesync-set-threshold", 1000 ]
+          vb.customize [ "modifyvm", :id, "--uart1", "0x3F8", "4" ]
+          vb.customize [ "modifyvm", :id, "--uartmode1", "file",
+          File.join(Dir.pwd, FILENAME) ]
+      end
+  
+      node.vm.provider :libvirt do |v, override|
+        v.memory = VM_MEMORY
+        v.cpus = VM_CPUS
+        # Fedora 30+ uses QEMU sessions by default, breaking pretty much all
+        # previously working Vagrantfiles:
+        # https://fedoraproject.org/wiki/Changes/Vagrant_2.2_with_QEMU_Session#Upgrade.2Fcompatibility_impact
+        v.qemu_use_session = false
+        if SYNC_FOLDER && !SYNC_FOLDER.empty?
+          override.vm.synced_folder "#{SYNC_FOLDER}", "/synched_folder", type: :rsync
+        end
+      end
+    end
+  end
+end

@@ -18,9 +18,11 @@ from cf_remote.packages import Releases
 from cf_remote.web import download_package
 from cf_remote.paths import (
     cf_remote_dir,
+    cf_remote_packages_dir,
     CLOUD_CONFIG_FPATH,
     CLOUD_STATE_FPATH,
-    cf_remote_packages_dir,
+    SSH_CONFIG_FPATH,
+    SSH_CONFIGS_JSON_FPATH,
 )
 from cf_remote.utils import (
     copy_file,
@@ -37,7 +39,14 @@ from cf_remote.utils import (
     CFRChecksumError,
     CFRUserError,
 )
-from cf_remote.spawn import VM, VMRequest, Providers, AWSCredentials, GCPCredentials
+from cf_remote.spawn import (
+    CloudVM,
+    VMRequest,
+    Providers,
+    AWSCredentials,
+    GCPCredentials,
+    VagrantVM,
+)
 from cf_remote.spawn import spawn_vms, destroy_vms, dump_vms_info, get_cloud_driver
 from cf_remote import log
 from cf_remote import cloud_data
@@ -393,6 +402,9 @@ def spawn(
     network=None,
     public_ip=True,
     extend_group=False,
+    vagrant_cpus=None,
+    vagrant_sync_folder=None,
+    vagrant_provision=None,
 ):
     creds_data = None
     if os.path.exists(CLOUD_CONFIG_FPATH):
@@ -469,13 +481,20 @@ def spawn(
             network=network,
             role=role,
             spawned_cb=print_progress_dot,
+            vagrant_cpus=vagrant_cpus,
+            vagrant_sync_folder=vagrant_sync_folder,
+            vagrant_provision=vagrant_provision,
         )
     except ValueError as e:
         print("\nError: Failed to spawn VMs - " + str(e))
         return 1
     print("DONE")
 
-    if public_ip and (not all(vm.public_ips for vm in vms)):
+    if (
+        provider != Providers.VAGRANT
+        and public_ip
+        and (not all(vm.public_ips for vm in vms))
+    ):
         print("Waiting for VMs to get IP addresses...", end="")
         sys.stdout.flush()  # STDOUT is line-buffered
         while not all(vm.public_ips for vm in vms):
@@ -487,6 +506,16 @@ def spawn(
         vms_info[group_key].update(dump_vms_info(vms))
     else:
         vms_info[group_key] = dump_vms_info(vms)
+
+    if provider == Providers.VAGRANT:
+        vmdir = vms[0].vmdir
+        ssh_config = read_json(SSH_CONFIGS_JSON_FPATH)
+        if not ssh_config:
+            ssh_config = {}
+
+        with open(os.path.join(vmdir, "vagrant-ssh-config"), "r") as f:
+            ssh_config[group_key] = f.read()
+        write_json(SSH_CONFIGS_JSON_FPATH, ssh_config)
 
     write_json(CLOUD_STATE_FPATH, vms_info)
     print("Details about the spawned VMs can be found in %s" % CLOUD_STATE_FPATH)
@@ -508,6 +537,36 @@ def _delete_saved_group(vms_info, group_name):
             "  {}: {}@{} ({})".format(name, vm["user"], vm["public_ips"][0], vm["role"])
         )
     del vms_info[group_name]
+
+
+def _get_cloud_vms(provider, creds, region, group):
+    if creds is None:
+        raise CFRExitError("Missing/incomplete {} credentials".format(provider.upper()))
+    driver = get_cloud_driver(provider, creds, region)
+
+    assert driver is not None
+
+    nodes = driver.list_nodes()
+    for name, vm_info in group.items():
+        if name == "meta":
+            continue
+        vm_uuid = vm_info["uuid"]
+        vm = CloudVM.get_by_uuid(vm_uuid, nodes=nodes)
+        if vm is not None:
+            yield vm
+        else:
+            print("VM '%s' not found in the clouds" % vm_uuid)
+
+
+def _get_vagrant_vms(group):
+    for name, vm_info in group.items():
+        if name == "meta":
+            continue
+        vm = VagrantVM.get_by_info(name, vm_info)
+        if vm is not None:
+            yield vm
+        else:
+            print("VM '%s' not found locally" % name)
 
 
 def destroy(group_name=None):
@@ -549,6 +608,7 @@ def destroy(group_name=None):
         raise CFRUserError("No saved VMs found in '{}'".format(CLOUD_STATE_FPATH))
 
     to_destroy = []
+    group_names = None
     if group_name:
         if not group_name.startswith("@"):
             group_name = "@" + group_name
@@ -556,85 +616,46 @@ def destroy(group_name=None):
             print("Group '%s' not found" % group_name)
             return 1
 
+        group_names = [group_name]
+    else:
+        group_names = [key for key in vms_info.keys() if key.startswith("@")]
+
+    ssh_config = read_json(SSH_CONFIGS_JSON_FPATH)
+    assert group_names is not None
+    for group_name in group_names:
         if _is_saved_group(vms_info, group_name):
             _delete_saved_group(vms_info, group_name)
-            write_json(CLOUD_STATE_FPATH, vms_info)
-            return 0
-
-        print("Destroying hosts in the '%s' group" % group_name)
+            continue
 
         region = vms_info[group_name]["meta"]["region"]
         provider = vms_info[group_name]["meta"]["provider"]
-        if provider not in ["aws", "gcp"]:
+        if provider not in ["aws", "gcp", "vagrant"]:
             raise CFRUserError(
-                "Unsupported provider '{}' encountered in '{}', only aws / gcp is supported".format(
+                "Unsupported provider '{}' encountered in '{}', only aws, gcp and vagrant are supported".format(
                     provider, CLOUD_STATE_FPATH
                 )
             )
 
-        driver = None
+        group = vms_info[group_name]
+        vms = []
         if provider == "aws":
-            if aws_creds is None:
-                raise CFRExitError("Missing/incomplete AWS credentials")
-            driver = get_cloud_driver(Providers.AWS, aws_creds, region)
+            vms = _get_cloud_vms(Providers.AWS, aws_creds, region, group)
         if provider == "gcp":
-            if gcp_creds is None:
-                raise CFRExitError("Missing/incomplete GCP credentials")
-            driver = get_cloud_driver(Providers.GCP, gcp_creds, region)
-        assert driver is not None
+            vms = _get_cloud_vms(Providers.GCP, gcp_creds, region, group)
+        if provider == "vagrant":
+            vms = _get_vagrant_vms(group)
 
-        nodes = driver.list_nodes()
-        for name, vm_info in vms_info[group_name].items():
-            if name == "meta":
-                continue
-            vm_uuid = vm_info["uuid"]
-            vm = VM.get_by_uuid(vm_uuid, nodes=nodes)
-            if vm is not None:
-                to_destroy.append(vm)
-            else:
-                print("VM '%s' not found in the clouds" % vm_uuid)
+        for vm in vms:
+            to_destroy.append(vm)
+
         del vms_info[group_name]
-    else:
-        print("Destroying all hosts")
-        for group_name in [key for key in vms_info.keys() if key.startswith("@")]:
-            if _is_saved_group(vms_info, group_name):
-                _delete_saved_group(vms_info, group_name)
-                continue
 
-            region = vms_info[group_name]["meta"]["region"]
-            provider = vms_info[group_name]["meta"]["provider"]
-            if provider not in ["aws", "gcp"]:
-                raise CFRUserError(
-                    "Unsupported provider '{}' encountered in '{}', only aws / gcp is supported".format(
-                        provider, CLOUD_STATE_FPATH
-                    )
-                )
-
-            driver = None
-            if provider == "aws":
-                if aws_creds is None:
-                    raise CFRExitError("Missing/incomplete AWS credentials")
-                driver = get_cloud_driver(Providers.AWS, aws_creds, region)
-            if provider == "gcp":
-                if gcp_creds is None:
-                    raise CFRExitError("Missing/incomplete GCP credentials")
-                driver = get_cloud_driver(Providers.GCP, gcp_creds, region)
-            assert driver is not None
-
-            nodes = driver.list_nodes()
-            for name, vm_info in vms_info[group_name].items():
-                if name == "meta":
-                    continue
-                vm_uuid = vm_info["uuid"]
-                vm = VM.get_by_uuid(vm_uuid, nodes=nodes)
-                if vm is not None:
-                    to_destroy.append(vm)
-                else:
-                    print("VM '%s' not found in the clouds" % vm_uuid)
-            del vms_info[group_name]
+        if ssh_config and group_name in ssh_config:
+            del ssh_config[group_name]
 
     destroy_vms(to_destroy)
     write_json(CLOUD_STATE_FPATH, vms_info)
+    write_json(SSH_CONFIGS_JSON_FPATH, ssh_config)
     return 0
 
 
@@ -653,6 +674,11 @@ def list_platforms():
     for key in sorted(cloud_data.aws_image_criteria.keys()):
         print(key)
     return 0
+
+
+def list_boxes():
+    result = subprocess.run(["vagrant", "box", "list"])
+    return result.returncode
 
 
 def init_cloud_config():
@@ -1010,7 +1036,7 @@ def connect_cmd(hosts):
         raise CFRExitError("You can only connect to one host at a time")
 
     print("Opening a SSH command shell...")
-    r = subprocess.run(["ssh", hosts[0]])
+    r = subprocess.run(["ssh", "-F", SSH_CONFIG_FPATH, hosts[0]])
     if r.returncode == 0:
         return 0
     if r.returncode < 0:

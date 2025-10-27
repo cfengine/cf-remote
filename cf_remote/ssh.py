@@ -9,8 +9,9 @@ from urllib.parse import urlparse
 from cf_remote import aramid
 from cf_remote import log
 from cf_remote import paths
-from cf_remote.utils import whoami
+from cf_remote.utils import whoami, read_json
 from cf_remote.aramid import ExecutionResult
+from cf_remote.paths import SSH_CONFIG_FPATH, SSH_CONFIGS_JSON_FPATH
 
 
 class LocalConnection:
@@ -118,9 +119,22 @@ class Connection:
         pass
 
 
+def _build_ssh_config():
+    configs = read_json(SSH_CONFIGS_JSON_FPATH)
+
+    os.makedirs(os.path.dirname(SSH_CONFIG_FPATH), exist_ok=True)
+    with open(SSH_CONFIG_FPATH, "w") as f:
+        if configs is not None:
+            for config in configs.values():
+                f.write(config)
+
+
 def connect(host, users=None):
     log.debug("Connecting to '%s'" % host)
     log.debug("users= '%s'" % users)
+
+    log.debug("Building config file")
+
     parts = urlparse("ssh://%s" % host)
     host = parts.hostname
     if not users and parts.username:
@@ -165,6 +179,8 @@ def connect(host, users=None):
 # and connection should be a keyword argument with default None
 # Uses a context manager (with) to ensure connections are closed
 def auto_connect(func):
+    _build_ssh_config()
+
     def connect_wrapper(host, *args, **kwargs):
         if not kwargs.get("connection"):
             if host == "localhost":

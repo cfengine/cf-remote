@@ -29,6 +29,7 @@ import subprocess
 import time
 from urllib.parse import urlparse
 from cf_remote import log
+from cf_remote.paths import SSH_CONFIG_FPATH
 
 DEFAULT_SSH_ARGS = [
     "-oLogLevel=ERROR",
@@ -37,6 +38,8 @@ DEFAULT_SSH_ARGS = [
     "-oBatchMode=yes",
     "-oHostKeyAlgorithms=+ssh-rsa",
     "-oPubkeyAcceptedKeyTypes=+ssh-rsa",
+    "-F",
+    "{}".format(SSH_CONFIG_FPATH),
 ]
 """Default arguments to use with all SSH commands (incl. 'scp' and 'rsync')"""
 
@@ -338,10 +341,11 @@ def execute(
         if host.port != _DEFAULT_SSH_PORT:
             port_args += ["-p", str(host.port)]
         proc = subprocess.Popen(
-            ["ssh", host.login]
+            ["ssh"]
             + DEFAULT_SSH_ARGS
             + port_args
             + host.extra_ssh_args
+            + [host.login]
             + [commands[i]],
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,

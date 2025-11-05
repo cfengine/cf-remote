@@ -85,7 +85,7 @@ def download_package(url, path=None, checksum=None, insecure=False):
         return path
 
     print("Downloading package: '{}'".format(path))
-    fd, tmp = tempfile.mkstemp()
+    fd, tmp = tempfile.mkstemp(dir=os.path.dirname(path))
     answer = urllib.request.urlopen(url).read()
     os.write(fd, answer)
     os.close(fd)

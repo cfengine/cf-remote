@@ -63,7 +63,6 @@ def has_downloaded_package(path, filename, checksum, insecure):
 
 
 def download_package(url, path=None, checksum=None, insecure=False):
-    print(insecure)
     assert path is None or type(path) is str and len(path) > 0
 
     if checksum and not SHA256_RE.match(checksum):

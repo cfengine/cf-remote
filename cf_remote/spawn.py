@@ -348,22 +348,23 @@ def get_cloud_driver(provider, creds, region):
 # image for that platform and version.
 def _get_image_criteria(platform_name):
     log.debug("Looking for AWS AMI for platform_name '%s'" % (platform_name))
-    platform = platform_name.split("-")[0]
+    platform_parts = platform_name.split("-")
+    platform = platform_parts[0]
     if platform == "ubuntu":
-        if platform_name.count("-") > 0:
-            platform_version = ".".join(platform_name.split("-")[1:-1])
+        if len(platform_parts) == 2:
+            platform_version = platform_parts[1]
+        elif len(platform_parts) > 2:
+            platform_version = ".".join(platform_parts[1:-1])
         else:
             platform_version = ""
     else:
-        platform_version = (
-            platform_name.count("-") > 0 and platform_name.split("-")[1] or "*"
-        )
+        platform_version = platform_name.count("-") > 0 and platform_parts[1] or "*"
     log.debug(
         "Parsed platform_version '%s' from platform_name '%s'"
         % (platform_version, platform_name)
     )
-    platform_with_major_version = "-".join(platform_name.split("-")[0:2])
-    architecture = platform_name.split("-")[-1]
+    platform_with_major_version = "-".join(platform_parts[0:2])
+    architecture = platform_parts[-1]
     # architecture should be either x64 or arm64
     if not (architecture == "x64" or architecture == "arm64"):
         # default to x64

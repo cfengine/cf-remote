@@ -11,7 +11,7 @@ from cf_remote import log
 from cf_remote import paths
 from cf_remote.utils import whoami, read_json
 from cf_remote.aramid import ExecutionResult
-from cf_remote.paths import SSH_CONFIG_FPATH, SSH_CONFIGS_JSON_FPATH
+from cf_remote.paths import SSH_CONFIG_FPATH, SSH_CONFIGS_JSON_FPATH, CLOUD_STATE_FPATH
 
 
 class LocalConnection:
@@ -77,8 +77,8 @@ class Connection:
             % " ".join(control_master_args)
         )
         self._ssh_control_master = subprocess.Popen(
-            control_master_args,
-        )  # stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            control_master_args, stderr=subprocess.DEVNULL  # stdout=subprocess.DEVNULL,
+        )
 
         self.needs_sudo = self.run("echo $UID", hide=True).stdout.strip() != "0"
         log.debug("Connection initialized")
@@ -129,17 +129,34 @@ def _build_ssh_config():
                 f.write(config)
 
 
+def host_is_vagrant(host):
+
+    config = read_json(CLOUD_STATE_FPATH)
+
+    if config is None:
+        return False
+
+    for group in config.values():
+        for curr_host in group.keys():
+            if curr_host == host and group["meta"]["provider"] == "vagrant":
+                return True
+
+    return False
+
+
 def connect(host, users=None):
     log.debug("Connecting to '%s'" % host)
     log.debug("users= '%s'" % users)
-
-    log.debug("Building config file")
 
     parts = urlparse("ssh://%s" % host)
     host = parts.hostname
     if not users and parts.username:
         users = [parts.username]
     port = parts.port or aramid._DEFAULT_SSH_PORT
+
+    if host_is_vagrant(host):
+        users = ["vagrant"]
+
     if not users:
         users = [
             "Administrator",
@@ -179,6 +196,7 @@ def connect(host, users=None):
 # and connection should be a keyword argument with default None
 # Uses a context manager (with) to ensure connections are closed
 def auto_connect(func):
+    log.debug("Building config file")
     _build_ssh_config()
 
     def connect_wrapper(host, *args, **kwargs):

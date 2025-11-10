@@ -235,7 +235,6 @@ def install(
         if type(hubs) is str:
             hubs = [hubs]
         for index, hub in enumerate(hubs):
-            log.debug("Installing {} hub package on '{}'".format(edition, hub))
             hub_jobs.append(
                 HostInstaller(
                     hub,

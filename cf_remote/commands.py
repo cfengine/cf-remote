@@ -409,8 +409,6 @@ def spawn(
     creds_data = None
     if os.path.exists(CLOUD_CONFIG_FPATH):
         creds_data = read_json(CLOUD_CONFIG_FPATH)
-    if not creds_data:
-        raise CFRUserError("Cloud configuration not found at %s" % CLOUD_CONFIG_FPATH)
 
     vms_info = None
     if os.path.exists(CLOUD_STATE_FPATH):
@@ -428,6 +426,10 @@ def spawn(
     sec_groups = None
     key_pair = None
     if provider == Providers.AWS:
+        if not creds_data:
+            raise CFRUserError(
+                "Cloud configuration not found at %s" % CLOUD_CONFIG_FPATH
+            )
         try:
             creds = _get_aws_creds_from_env() or AWSCredentials(
                 creds_data["aws"]["key"],
@@ -442,6 +444,10 @@ def spawn(
 
         region = region or creds_data["aws"].get("region", "eu-west-1")
     elif provider == Providers.GCP:
+        if not creds_data:
+            raise CFRUserError(
+                "Cloud configuration not found at %s" % CLOUD_CONFIG_FPATH
+            )
         try:
             creds = GCPCredentials(
                 creds_data["gcp"]["project_id"],

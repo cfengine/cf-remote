@@ -17,7 +17,14 @@ from cf_remote.utils import (
     parse_version,
     CFRChecksumError,
 )
-from cf_remote.ssh import ssh_sudo, ssh_cmd, scp, auto_connect
+from cf_remote.ssh import (
+    ssh_sudo,
+    ssh_cmd,
+    scp,
+    auto_connect,
+    host_is_vagrant,
+    get_state_from_host,
+)
 from cf_remote import log
 from cf_remote.web import download_package
 from cf_remote.packages import Releases, Artifact, filter_artifacts
@@ -206,8 +213,7 @@ def get_info(host, *, users=None, connection=None):
     user, host = connection.ssh_user, connection.ssh_host
     data = OrderedDict()
     data["ssh_user"] = user
-    data["ssh_host"] = host
-    data["ssh"] = "{}@{}".format(user, host)
+
     systeminfo = ssh_cmd(connection, "systeminfo")
     if systeminfo:
         data["os"] = "windows"
@@ -278,13 +284,17 @@ def get_info(host, *, users=None, connection=None):
         if "NTD_PRIVATE_IP" in discovery:
             data["private_ip"] = discovery["NTD_PRIVATE_IP"]
 
+    if host_is_vagrant(host) and data["private_ip"]:
+        host = data["private_ip"].split()[1]
+    data["ssh_host"] = host
+    data["ssh"] = "{}@{}".format(user, host)
     log.debug("JSON data from host info: \n" + pretty(data))
     return data
 
 
 @auto_connect
 def install_package(host, pkg, data, demo, *, connection=None):
-    print("Installing: '{}' on '{}'".format(pkg, host))
+    print("Installing: '{}' on '{}'".format(pkg, data["ssh_host"]))
     output = None
     if ".deb" in pkg:
         output = ssh_sudo(connection, 'dpkg -i "{}"'.format(pkg), True, needs_pty=True)
@@ -395,6 +405,11 @@ def uninstall_cfengine(host, data, *, connection=None, purge=False):
 def bootstrap_host(host_data, policy_server, *, connection=None, trust_server=True):
     host = host_data["ssh_host"]
     agent = host_data["agent"]
+
+    policy_server_data = get_state_from_host(policy_server)
+    if policy_server_data and ("private_ips" in policy_server_data):
+        policy_server = policy_server_data["public_ips"][0]
+
     print("Bootstrapping: '{}' -> '{}'".format(host, policy_server))
     command = "{} --bootstrap {}".format(agent, policy_server)
     if not trust_server:
@@ -529,6 +544,8 @@ def install_host(
     if show_info:
         print_info(data)
 
+    log.debug("Installing {} hub package on '{}'".format(edition, data["ssh_host"]))
+
     package = None
     if packages and type(packages) is str:
         package = packages
@@ -583,7 +600,7 @@ def install_host(
     if data["agent_version"] and len(data["agent_version"]) > 0:
         print(
             "CFEngine {} was successfully installed on '{}'".format(
-                data["agent_version"], host
+                data["agent_version"], data["ssh_host"]
             )
         )
     else:

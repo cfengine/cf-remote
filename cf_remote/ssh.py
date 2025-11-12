@@ -144,6 +144,18 @@ def host_is_vagrant(host):
     return False
 
 
+def get_state_from_host(host):
+
+    config = read_json(CLOUD_STATE_FPATH)
+    if config is None:
+        return False
+
+    for group in config.values():
+        for curr_host, data in group.items():
+            if curr_host == host:
+                return data
+
+
 def connect(host, users=None):
     log.debug("Connecting to '%s'" % host)
     log.debug("users= '%s'" % users)

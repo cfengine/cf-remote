@@ -684,7 +684,7 @@ def main() -> int:
         print("Error: " + str(e))
     except CFRExitError as e:
         print("Error: " + str(e))
-    except (AssertionError, CFRProgrammerError) as e:
+    except (AssertionError, CFRProgrammerError, Exception) as e:
         print("Error: " + str(e))
         print(
             "This is an unexpected error indicating a bug, please create a ticket at:"

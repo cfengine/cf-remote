@@ -681,11 +681,11 @@ def main() -> int:
         assert type(r) is int
         return r
     except CFRUserError as e:
-        print("Error: " + str(e))
+        print("\nError: " + str(e))
     except CFRExitError as e:
-        print("Error: " + str(e))
-    except (AssertionError, CFRProgrammerError) as e:
-        print("Error: " + str(e))
+        print("\nError: " + str(e))
+    except (AssertionError, CFRProgrammerError, Exception) as e:
+        print("\nError: " + str(e))
         print(
             "This is an unexpected error indicating a bug, please create a ticket at:"
         )

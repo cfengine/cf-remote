@@ -20,7 +20,7 @@ from libcloud.compute.drivers.gce import GCENodeDriver
 
 from cf_remote.cloud_data import aws_image_criteria, aws_defaults
 from cf_remote.paths import cf_remote_dir, CLOUD_STATE_FPATH
-from cf_remote.utils import whoami, copy_file, canonify, read_json
+from cf_remote.utils import CFRUserError, whoami, copy_file, canonify, read_json
 from cf_remote import log
 from cf_remote import cloud_data
 
@@ -822,10 +822,25 @@ def spawn_vm_in_vagrant(
         command_args.append("--no-provision")
 
     log.debug("Starting the VM(s)")
-    result = subprocess.run(command_args, env=vagrant_env, stderr=subprocess.PIPE)
+    try:
+        result = subprocess.run(command_args, env=vagrant_env, stderr=subprocess.PIPE)
+    except FileNotFoundError as e:
+        raise CFRUserError(
+            "'vagrant' not found - go to https://www.vagrantup.com/downloads to download and install vagrant ({}).".format(
+                e
+            )
+        )
 
     if result.returncode != 0:
-        raise Exception(result.stderr.decode())
+        print()
+        log.error(result.stderr.decode())
+        raise CFRUserError(
+            (
+                "vagrant exited with error code {}"
+                + " - Make sure you have a working vagrant setup, install VirtualBox if you haven't already: "
+                + "https://www.virtualbox.org/wiki/Downloads"
+            ).format(result.returncode)
+        )
 
     log.debug("Copying vagrant ssh config")
 

@@ -546,7 +546,9 @@ def _delete_saved_group(vms_info, group_name):
 
 def _get_cloud_vms(provider, creds, region, group):
     if creds is None:
-        raise CFRExitError("Missing/incomplete {} credentials".format(provider.upper()))
+        raise CFRExitError(
+            "Missing/incomplete {} credentials".format(str(provider).upper())
+        )
     driver = get_cloud_driver(provider, creds, region)
 
     assert driver is not None

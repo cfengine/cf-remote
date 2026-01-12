@@ -801,6 +801,7 @@ def spawn_vm_in_vagrant(
         "provision": bootstrap,
         "name": name,
         "sync_folder": sync_folder,
+        "default_provision": os.path.join(dirname(__file__), "default_provision.sh"),
     }
 
     log.debug("Saving the vagrant VM config")
@@ -817,9 +818,6 @@ def spawn_vm_in_vagrant(
     command_args = ["vagrant", "up"]
     vagrant_env = os.environ.copy()
     vagrant_env["VAGRANT_CWD"] = vagrantdir
-
-    if provision_script is None:
-        command_args.append("--no-provision")
 
     log.debug("Starting the VM(s)")
     try:

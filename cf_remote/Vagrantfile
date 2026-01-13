@@ -15,6 +15,7 @@ VM_CPUS = config['cpus']
 VM_PROVISION = File.expand_path(config['provision'], __FILE__)
 VM_NAME = config['name']
 SYNC_FOLDER = config['sync_folder']
+DEFAULT_PROVISION_SCRIPT = config['default_provision']
 
 Vagrant.configure("2") do |config|
 
@@ -25,6 +26,7 @@ Vagrant.configure("2") do |config|
       node.vm.network "private_network", ip: "192.168.56.#{9 + i}"
       node.vm.box = VM_BOX
 
+      node.vm.provision "default_provision", type: "shell", path: DEFAULT_PROVISION_SCRIPT
       node.vm.provision "shell" do |s|
         ssh_pub_key_path = "#{Dir.home}/.ssh/id_rsa.pub"
         if !File.file?(ssh_pub_key_path)

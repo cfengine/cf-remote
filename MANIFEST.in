@@ -1,2 +1,3 @@
 include cf_remote/nt-discovery.sh
 include cf_remote/Vagrantfile
+include cf_remote/default_provision.sh

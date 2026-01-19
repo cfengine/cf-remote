@@ -37,6 +37,12 @@ class CFRChecksumError(Exception):
     pass
 
 
+class CFRConfigValidationError(Exception):
+    """Exception for when the cf-remote config is a valid yaml file but an invalid spawn config"""
+
+    pass
+
+
 def is_in_past(date):
     now = datetime.now()
     date = datetime.strptime(date, "%Y-%m-%d")

@@ -1,0 +1,39 @@
+templates: 
+  ubuntu-vm:
+    provider: aws
+    aws:
+      image: ubuntu-24
+
+  centos7:
+    provider: vagrant
+    vagrant:
+      box: generic/centos7
+
+  cfengine-3.24.3:
+    version: 3.24.3 
+    bootstrap: myhub
+
+groups:
+  - myhub:
+      role: hub
+      source:
+        mode: spawn
+        spawn: ubuntu-vm
+        count: 1
+      cfengine: cfengine-3.24.3
+      scripts: [ ./cf_remote/nt-discovery.sh ]
+
+  - myclient:
+      role: client
+      source:
+        mode: spawn
+        spawn: centos7
+        count: 3
+      cfengine: cfengine-3.24.3
+
+  - other:
+      role: client
+      source:
+        mode: save
+        hosts: [ ubuntu@1.1.1.1 ]
+      cfengine: cfengine-3.24.3

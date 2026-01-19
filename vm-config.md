@@ -73,6 +73,17 @@ Details about the current state can be found in /home/user/.cfengine/cf-remote/c
 cf-remote destroy config.yaml
 ```
 
+# Algorithm
+
+1. Resolve templates in config
+2. Validate resolved config using `schema` library
+3. Load old state (cloud_state.json)
+4. Transform validated config (new state) into same format as old state
+5. Compute diffs between old state and new state. Return a list of tuple (path, before, after)
+6. Map diffs to Change object containing the type of change (ex: install), the status (ex: pending) and the dependencies (vm must be already spawned)
+7. schedule the list of change objects with topological sort or other algorithm and run each change using cf-remote's commands
+8. save new state to cloud_state.json
+
 # Future features
 
 - inlining (being able to split config in smaller subtrees)

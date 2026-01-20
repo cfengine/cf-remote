@@ -89,7 +89,12 @@ class Artifact:
             part = part.strip()
             if part == "x86":
                 continue
-            if part == "amd64" or part == "x86_64" or part == "arm64":
+            if (
+                part == "amd64"
+                or part == "x86_64"
+                or part == "arm64"
+                or part == "aarch64"
+            ):
                 self.add_tag("64")
             try:
                 _ = int(part)
@@ -120,6 +125,8 @@ class Artifact:
             self.add_tag("64")
         if "arm64" in parts:
             self.add_tag("aarch64")
+        if "aarch64" in parts:
+            self.add_tag("arm64")
             self.add_tag("64")
         log.debug(
             "After looking at filename {}, tags for this package are {}".format(

@@ -1,4 +1,11 @@
-levels = {"CRITICAL": 50, "ERROR": 40, "WARNING": 30, "INFO": 20, "DEBUG": 10}
+levels = {
+    "NONE": 60,
+    "CRITICAL": 50,
+    "ERROR": 40,
+    "WARNING": 30,
+    "INFO": 20,
+    "DEBUG": 10,
+}
 
 level = levels["WARNING"]
 

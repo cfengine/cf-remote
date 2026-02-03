@@ -34,7 +34,7 @@ def _get_arg_parser():
 
     ap.add_argument(
         "--log-level",
-        help="Specify level of logging: DEBUG, INFO, WARNING, ERROR, or CRITICAL",
+        help="Specify level of logging: NONE, DEBUG, INFO, WARNING, ERROR, or CRITICAL",
         type=str,
         default="WARNING",
     )

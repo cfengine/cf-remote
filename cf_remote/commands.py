@@ -1054,3 +1054,34 @@ def connect_cmd(hosts):
     print("")
     log.error("The ssh command exited with error code " + str(r.returncode))
     return r.returncode
+
+
+import yaml
+from cf_remote.config import validate_config, generate_tasks, schedule_tasks
+
+
+def up_command(config_path):
+    content = None
+    try:
+        with open(config_path, "r") as f:
+            content = yaml.safe_load(f)
+    except yaml.YAMLError:
+        raise CFRUserError("'%s' is not a valid YAML file" % config_path)
+    except FileNotFoundError as e:
+        raise CFRUserError("'%s' doesn't exist" % config_path)
+
+    print("Loading '%s'..." % config_path)
+    # 1. Validate config
+    new_state = validate_config(content)
+
+    # 2. Compare old config to new config
+    print("Checking current state...")
+    current_state = read_json(CLOUD_STATE_FPATH)
+    current_state = {}
+    tasks = generate_tasks(current_state, new_state)
+
+    # 3. apply changes
+    schedule_tasks(current_state, tasks)
+
+    print("Details about the spawned VMs can be found in %s" % CLOUD_STATE_FPATH)
+    return 0

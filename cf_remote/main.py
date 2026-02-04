@@ -9,6 +9,7 @@ from cf_remote.utils import (
     CFRExitError,
     CFRProgrammerError,
     CFRUserError,
+    CFRConfigValidationError,
     exit_success,
     expand_list_from_file,
     is_file_string,
@@ -311,6 +312,11 @@ def _get_arg_parser():
         "--hosts", "-H", help="Host to open the shell on", type=str, required=True
     )
 
+    sp = subp.add_parser("up", help="Builds a cf-remote environment from a config")
+    sp.add_argument(
+        "config", help="Path to yaml config", default="config.yaml", nargs="?"
+    )
+
     return ap
 
 
@@ -442,6 +448,8 @@ def run_command_with_args(command, args) -> int:
         return commands.agent(args.hosts, args.bootstrap)
     elif command == "connect":
         return commands.connect_cmd(args.hosts)
+    elif command == "up":
+        return commands.up_command(args.config)
     else:
         raise CFRExitError("Unknown command: '{}'".format(command))
 
@@ -683,6 +691,8 @@ def main() -> int:
     except CFRUserError as e:
         print("\nError: " + str(e))
     except CFRExitError as e:
+        print("\nError: " + str(e))
+    except CFRConfigValidationError as e:
         print("\nError: " + str(e))
     except (AssertionError, CFRProgrammerError, Exception) as e:
         print("\nError: " + str(e))

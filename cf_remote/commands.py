@@ -314,13 +314,22 @@ def _iterate_over_packages(
     download=False,
     output_dir=None,
     insecure=False,
+    allow_expired=False,
 ):
     assert edition in ["enterprise", "community", None]
     releases = Releases(edition)
     print("Available releases: {}".format(releases))
+    if allow_expired:
+        print("Expired releases: {}".format(releases.show_expired()))
 
     release_versions = [rel.version for rel in releases.releases]
-    if version and version not in release_versions:
+    expired_versions = [rel.version for rel in releases.expired_releases]
+
+    using_expired_version = version and (version in expired_versions)
+
+    if using_expired_version and not allow_expired:
+        raise CFRUserError("Use flag --allow-expired to list expired version")
+    elif not using_expired_version and (version not in release_versions):
         raise CFRExitError("CFEngine version '%s' doesn't exist (yet)." % version)
 
     if tags and not version:
@@ -336,6 +345,12 @@ def _iterate_over_packages(
     if not release:
         raise CFRExitError("Failed to find a release for version '%s'" % version)
     print("Using {}:".format(release))
+    if using_expired_version:
+        log.warning(
+            "You are using an expired CFEngine version {} which is no longer supported and may contain known vulnerabilities. Proceed at your own risk.".format(
+                version
+            )
+        )
     log.debug("Looking for a release based on host tags: {}".format(tags))
     artifacts = release.find(tags)
     if len(artifacts) == 0:
@@ -368,16 +383,33 @@ def _iterate_over_packages(
                     print("Copied to '{}' (Checksum OK).".format(output_path))
             else:
                 print(artifact.url)
+    if using_expired_version:
+        log.warning(
+            "You are using an expired CFEngine version {} which is no longer supported and may contain known vulnerabilities. Proceed at your own risk.".format(
+                version
+            )
+        )
     return 0
 
 
 # named list_command to not conflict with list()
-def list_command(tags=None, version=None, edition=None):
-    return _iterate_over_packages(tags, version, edition, False)
+def list_command(tags=None, version=None, edition=None, allow_expired=False):
+    return _iterate_over_packages(
+        tags, version, edition, False, allow_expired=allow_expired
+    )
 
 
-def download(tags=None, version=None, edition=None, output_dir=None, insecure=False):
-    return _iterate_over_packages(tags, version, edition, True, output_dir, insecure)
+def download(
+    tags=None,
+    version=None,
+    edition=None,
+    output_dir=None,
+    insecure=False,
+    allow_expired=False,
+):
+    return _iterate_over_packages(
+        tags, version, edition, True, output_dir, insecure, allow_expired
+    )
 
 
 def _get_aws_creds_from_env():

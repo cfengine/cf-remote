@@ -135,6 +135,10 @@ def _get_arg_parser():
     )
     sp.add_argument("tags", metavar="TAG", nargs="*")
 
+    sp.add_argument(
+        "--allow-expired", help="Also lists expired packages", action="store_true"
+    )
+
     sp = subp.add_parser("download", help="Download CFEngine packages")
     sp.add_argument(
         "--edition",
@@ -151,6 +155,9 @@ def _get_arg_parser():
         "--insecure",
         help="Ignore mismatching checksums when downloading urls",
         action="store_true",
+    )
+    sp.add_argument(
+        "--allow-expired", help="Allow expired packages", action="store_true"
     )
 
     sp = subp.add_parser(
@@ -352,11 +359,16 @@ def run_command_with_args(command, args) -> int:
             "packages command is deprecated, please use the new command: download"
         )
         return commands.download(
-            tags=args.tags, version=args.version, edition=args.edition
+            tags=args.tags,
+            version=args.version,
+            edition=args.edition,
         )
     elif command == "list":
         return commands.list_command(
-            tags=args.tags, version=args.version, edition=args.edition
+            tags=args.tags,
+            version=args.version,
+            edition=args.edition,
+            allow_expired=args.allow_expired,
         )
     elif command == "download":
         return commands.download(
@@ -365,6 +377,7 @@ def run_command_with_args(command, args) -> int:
             edition=args.edition,
             output_dir=args.output_dir,
             insecure=args.insecure,
+            allow_expired=args.allow_expired,
         )
     elif command == "run":
         return commands.run(hosts=args.hosts, raw=args.raw, command=args.remote_command)

@@ -205,6 +205,7 @@ class Releases:
         self.url = "https://cfengine.com/release-data/{}/releases.json".format(edition)
         self.data = get_json(self.url)
         self.supported_branches = []
+        self.expired_branches = []
         for branch in self.data["lts_branches"]:
             expires = branch["supported_until"]
             expires += "-25"
@@ -216,8 +217,10 @@ class Releases:
                 log.info(
                     "LTS branch {} expired on {}".format(branch["branch_name"], expires)
                 )
+                self.expired_branches.append(branch["branch_name"])
 
         self.releases = []
+        self.expired_releases = []
         for release in self.data["releases"]:
             rel = Release(release)
             if "status" in release and release["status"] == "unsupported":
@@ -227,6 +230,12 @@ class Releases:
                 and ("lts_branch" not in release)
                 and ("latest_stable" not in release)
             ):
+                continue
+            if (
+                "lts_branch" in release
+                and release["lts_branch"] in self.expired_branches
+            ):
+                self.expired_releases.append(rel)
                 continue
             if (
                 "lts_branch" in release
@@ -245,6 +254,9 @@ class Releases:
             if "lts_branch" in release and version == release["lts_branch"]:
                 return Release(release)
         return None
+
+    def show_expired(self):
+        return ", ".join(str(x.version) for x in self.expired_releases)
 
     def __str__(self):
         return ", ".join(str(x.version) for x in self.releases)

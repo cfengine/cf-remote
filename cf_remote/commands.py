@@ -52,6 +52,12 @@ from cf_remote.spawn import spawn_vms, destroy_vms, dump_vms_info, get_cloud_dri
 from cf_remote import log
 from cf_remote import cloud_data
 from cf_remote.up import validate_config
+from cf_remote.validate import (
+    validate_aws_credentials,
+    validate_gcp_credentials,
+    validate_aws_image,
+    validate_vagrant_box,
+)
 
 
 def info(hosts, users=None):
@@ -439,10 +445,6 @@ def spawn(
     vagrant_sync_folder=None,
     vagrant_provision=None,
 ):
-    creds_data = None
-    if os.path.exists(CLOUD_CONFIG_FPATH):
-        creds_data = read_json(CLOUD_CONFIG_FPATH)
-
     vms_info = None
     if os.path.exists(CLOUD_STATE_FPATH):
         vms_info = read_json(CLOUD_STATE_FPATH)
@@ -459,39 +461,12 @@ def spawn(
     sec_groups = None
     key_pair = None
     if provider == Providers.AWS:
-        if not creds_data:
-            raise CFRUserError(
-                "Cloud configuration not found at %s" % CLOUD_CONFIG_FPATH
-            )
-        try:
-            creds = _get_aws_creds_from_env() or AWSCredentials(
-                creds_data["aws"]["key"],
-                creds_data["aws"]["secret"],
-                creds_data["aws"].get("token", ""),
-            )
-            sec_groups = creds_data["aws"]["security_groups"]
-            key_pair = creds_data["aws"]["key_pair"]
-        except KeyError:
-            print("Incomplete AWS credential info")  # TODO: report missing keys
-            return 1
-
-        region = region or creds_data["aws"].get("region", "eu-west-1")
+        creds, region, sec_groups, key_pair = validate_aws_credentials()
+        validate_aws_image(platform)
     elif provider == Providers.GCP:
-        if not creds_data:
-            raise CFRUserError(
-                "Cloud configuration not found at %s" % CLOUD_CONFIG_FPATH
-            )
-        try:
-            creds = GCPCredentials(
-                creds_data["gcp"]["project_id"],
-                creds_data["gcp"]["service_account_id"],
-                creds_data["gcp"]["key_path"],
-            )
-        except KeyError:
-            print("Incomplete GCP credential info")  # TODO: report missing keys
-            return 1
-
-        region = region or creds_data["gcp"].get("region", "europe-west1-b")
+        creds, region = validate_gcp_credentials()
+    else:
+        validate_vagrant_box(platform)
 
     # TODO: Do we have to complicate this instead of just assuming existing VMs
     # were created by this code and thus follow the naming pattern from this

@@ -22,7 +22,6 @@ from cf_remote.cloud_data import aws_image_criteria, aws_defaults
 from cf_remote.paths import cf_remote_dir, CLOUD_STATE_FPATH
 from cf_remote.utils import CFRUserError, whoami, copy_file, canonify, read_json
 from cf_remote import log
-from cf_remote import cloud_data
 
 VAGRANT_VM_IP_START = "192.168.56.9"
 _NAME_RANDOM_PART_LENGTH = 4
@@ -414,12 +413,6 @@ def spawn_vm_in_aws(
     size=None,
     role=None,
 ):
-    platform_name = platform.split("-")[0]
-    if platform_name not in aws_image_criteria:
-        raise ValueError(
-            "Platform '%s' is not in our set of image criteria. (Available platforms: %s)"
-            % (platform, ", ".join(cloud_data.aws_image_criteria.keys()))
-        )
     try:
         driver = get_cloud_driver(Providers.AWS, aws_creds, region)
         existing_vms = driver.list_nodes()
@@ -774,6 +767,7 @@ def spawn_vm_in_vagrant(
     sync_folder=None,
     provision_script=None,
 ):
+
     name = canonify(name).replace("_", "-")
     vagrantdir = cf_remote_dir(os.path.join("vagrant", name))
     os.makedirs(vagrantdir, exist_ok=True)

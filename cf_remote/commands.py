@@ -51,6 +51,7 @@ from cf_remote.spawn import (
 from cf_remote.spawn import spawn_vms, destroy_vms, dump_vms_info, get_cloud_driver
 from cf_remote import log
 from cf_remote import cloud_data
+from cf_remote.up import validate_config
 
 
 def info(hosts, users=None):
@@ -1098,5 +1099,7 @@ def up_cmd(config_path):
         raise CFRUserError("'%s' is not a valid YAML file" % config_path)
     except FileNotFoundError:
         raise CFRUserError("'%s' doesn't exist" % config_path)
+
+    validate_config(content)
 
     return 0

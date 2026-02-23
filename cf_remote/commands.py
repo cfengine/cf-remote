@@ -3,6 +3,7 @@ import os
 import subprocess
 import sys
 import time
+import yaml
 from multiprocessing.dummy import Pool
 
 from cf_remote.remote import (
@@ -1086,3 +1087,16 @@ def connect_cmd(hosts):
     print("")
     log.error("The ssh command exited with error code " + str(r.returncode))
     return r.returncode
+
+
+def up_cmd(config_path):
+    content = None
+    try:
+        with open(config_path, "r") as f:
+            content = yaml.safe_load(f)
+    except yaml.YAMLError:
+        raise CFRUserError("'%s' is not a valid YAML file" % config_path)
+    except FileNotFoundError:
+        raise CFRUserError("'%s' doesn't exist" % config_path)
+
+    return 0

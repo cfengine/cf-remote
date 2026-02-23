@@ -318,6 +318,11 @@ def _get_arg_parser():
         "--hosts", "-H", help="Host to open the shell on", type=str, required=True
     )
 
+    sp = subp.add_parser("up", help="Run cf-remote from a yaml config")
+    sp.add_argument(
+        "config", help="Path to yaml config", default="config.yaml", nargs="?"
+    )
+
     return ap
 
 
@@ -455,6 +460,8 @@ def run_command_with_args(command, args) -> int:
         return commands.agent(args.hosts, args.bootstrap)
     elif command == "connect":
         return commands.connect_cmd(args.hosts)
+    elif command == "up":
+        return commands.up_cmd(args.config)
     else:
         raise CFRExitError("Unknown command: '{}'".format(command))
 

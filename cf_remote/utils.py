@@ -314,7 +314,7 @@ def parse_envfile(text):
         if not key:
             return error_and_none("Invalid env file format: Key missing")
 
-        if not re.fullmatch(r"([A-Z]+\_?)+", key):
+        if not re.fullmatch(r"[A-Z][A-Z0-9]*(\_[A-Z0-9]+)*", key):
             return error_and_none("Invalid env file format: Invalid key")
 
         if not (val.startswith('"') and val.endswith('"')):

@@ -74,6 +74,8 @@ run_command "command -v apt" "APT" "Cannot find apt"
 run_command "command -v pkg" "PKG" "Cannot find pkg"
 run_command "command -v zypper" "ZYPPER" "Cannot find zypper"
 run_command "command -v curl" "CURL" "Cannot find curl"
+run_command "command -v wget" "WGET" "Cannot find wget"
+run_command "command -v sha256sum" "SHA256SUM" "Cannot find sha256sum"
 
 # ip
 

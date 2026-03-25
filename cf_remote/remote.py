@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import sys
 import re
+
 from os.path import basename, dirname, join, exists
 from collections import OrderedDict
 from typing import Union
@@ -276,7 +277,17 @@ def get_info(host, *, users=None, connection=None):
         data["role"] = "hub" if discovery.get("NTD_CFHUB") else "client"
 
         data["bin"] = {}
-        for bin in ["dpkg", "rpm", "yum", "apt", "pkg", "zypper", "curl"]:
+        for bin in [
+            "dpkg",
+            "rpm",
+            "yum",
+            "apt",
+            "pkg",
+            "zypper",
+            "curl",
+            "wget",
+            "sha256sum",
+        ]:
             path = discovery.get("NTD_{}".format(bin.upper()))
             if path:
                 data["bin"][bin] = path
@@ -432,7 +443,7 @@ def bootstrap_host(host_data, policy_server, *, connection=None, trust_server=Tr
 def _package_from_list(tags, extension, packages):
     artifacts = [Artifact(None, p) for p in packages]
     artifact = filter_artifacts(artifacts, tags, extension)[-1]
-    return artifact.url
+    return artifact.url, artifact
 
 
 def _package_from_releases(
@@ -445,7 +456,7 @@ def _package_from_releases(
         release = releases.pick_version(version)
     if release is None:
         print("Could not find a release for version {}".format(version))
-        return None
+        return None, None
 
     release.init_download()
 
@@ -455,7 +466,7 @@ def _package_from_releases(
                 version, edition
             )
         )
-        return None
+        return None, None
 
     artifacts = release.find(tags, extension)
     if not artifacts:
@@ -464,13 +475,16 @@ def _package_from_releases(
                 "hub" if "hub" in tags else "client"
             )
         )
-        return None
+        return None, None
     artifact = artifacts[-1]
     if remote_download:
-        return artifact.url
+        return artifact.url, artifact
     else:
-        return download_package(
-            artifact.url, checksum=artifact.checksum, insecure=insecure
+        return (
+            download_package(
+                artifact.url, checksum=artifact.checksum, insecure=insecure
+            ),
+            artifact,
         )
 
 
@@ -514,13 +528,103 @@ def get_package_from_host_info(
         tags.extend(tag for tag in package_tags if tag != "msi")
 
     if packages is None:  # No command line argument given
-        package = _package_from_releases(
+        package, artifact = _package_from_releases(
             tags, extension, version, edition, remote_download, insecure
         )
     else:
-        package = _package_from_list(tags, extension, packages)
+        package, artifact = _package_from_list(tags, extension, packages)
 
-    return package
+    return package, artifact
+
+
+def _remote_download(
+    host, package, artifact, available_binaries, insecure=False, connection=None
+):
+    """
+    Remotely download package on host from url.
+
+    This function checks for avalaible binaries, copies remote-download.sh to the host, then runs it to download the package from its url.
+    The script ensures package integrity by comparing checksums.
+
+    :host str hostname
+    :package str package url
+    :artifact Artifact artifact corresponding to the package that is downloaded
+    :available_binaries Dict[str:str] dictionary containing of program_name:path on the host
+    """
+
+    if not available_binaries:
+        log.error("No binary could be found on host '{}'".format(host))
+        return None
+
+    if "sha256sum" not in available_binaries:
+        if not insecure:
+            log.error(
+                "Cannot check file integrity. sha256sum is not installed on host '{}'. Run with --insecure to skip".format(
+                    host
+                )
+            )
+            return None
+        log.warning(
+            "Cannot check file integrity. sha256sum is not installed on host '{}'. Continuing due to insecure flag".format(
+                host
+            )
+        )
+
+    if not any(bin in available_binaries for bin in ("wget", "curl")):
+        log.error(
+            "Cannot download remotely. wget and curl are not installed on host '{}'".format(
+                host
+            )
+        )
+        return None
+    use_curl = "wget" not in available_binaries
+
+    if not (artifact and artifact.checksum):
+        if not insecure:
+            log.error(
+                "Cannot check file integrity on '{}'. No artifact associated with package '{}' found. Run with --insecure to skip".format(
+                    host, package
+                )
+            )
+            return None
+        log.warning(
+            "Cannot check file integrity on '{}'. No artifact associated with package '{}' found. Continuing due to insecure flag".format(
+                host, package
+            )
+        )
+
+    cf_remote_dir = dirname(__file__)
+    script_path = join(cf_remote_dir, "remote-download.sh")
+    if not exists(script_path):
+        sys.exit("%s does not exist" % script_path)
+    scp(
+        script_path,
+        host,
+        connection,
+        hide=True,
+    )
+
+    args = ""
+    if insecure:
+        args += "-I "
+    if use_curl:
+        args += "-C "
+    if artifact:
+        args += "-c {} ".format(artifact.checksum)
+    args += package
+
+    ret = ssh_cmd(connection, "bash remote-download.sh {}".format(args), errors=True)
+
+    if ret is None:
+        return None
+    if insecure:
+        warning = re.search(r"Package.*", ret)
+        if warning:
+            log.warning(warning.group(0))
+
+    log.debug("Package '{}' downloaded successfully on host '{}'".format(package, host))
+
+    return basename(package)
 
 
 @auto_connect
@@ -552,9 +656,10 @@ def install_host(
     elif packages and len(packages) == 1:
         package = packages[0]
 
+    artifact = None
     if not package:
         try:
-            package = get_package_from_host_info(
+            package, artifact = get_package_from_host_info(
                 data.get("package_tags"),
                 data.get("bin"),
                 data.get("arch"),
@@ -574,19 +679,16 @@ def install_host(
         return 1
 
     if remote_download:
-        if ("bin" not in data) or ("curl" not in data["bin"]):
-            log.error(
-                "Couldn't download remotely. Curl is not installed on host '%s'" % host
-            )
-            return 1
-
-        print("Downloading '%s' on '%s' using curl" % (package, host))
-        r = ssh_cmd(
-            cmd="curl --fail -O {}".format(package), connection=connection, errors=True
+        package = _remote_download(
+            host,
+            package,
+            artifact,
+            data.get("bin"),
+            connection=connection,
+            insecure=insecure,
         )
-        if r is None:
+        if package is None:
             return 1
-        package = basename(package)
     elif not getattr(connection, "is_local", False):
         scp(package, host, connection=connection)
         package = basename(package)

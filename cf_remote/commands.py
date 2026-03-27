@@ -318,6 +318,8 @@ def _iterate_over_packages(
 ):
     assert edition in ["enterprise", "community", None]
     releases = Releases(edition)
+    if not version:
+        version = releases.default.version
     print("Available releases: {}".format(releases))
     if allow_expired:
         print("Expired releases: {}".format(releases.show_expired()))

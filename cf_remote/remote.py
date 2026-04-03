@@ -216,7 +216,7 @@ def get_info(host, *, users=None, connection=None):
     data["ssh_user"] = user
 
     systeminfo = ssh_cmd(connection, "systeminfo")
-    if systeminfo:
+    if systeminfo and "command not found" not in systeminfo:
         data["os"] = "windows"
         data["systeminfo"] = parse_systeminfo(systeminfo)
         data["package_tags"] = ["x86_64", "msi"]

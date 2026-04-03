@@ -216,16 +216,30 @@ def get_info(host, *, users=None, connection=None):
     data["ssh_user"] = user
 
     systeminfo = ssh_cmd(connection, "systeminfo")
+    assert systeminfo is None or (type(systeminfo) is str and len(systeminfo) > 0)
+    # Note: ssh_cmd is supposed to return None on failure however, it seems
+    #       like there are some cases where it returns output on failure
+    #       because the exit code was 0
+    # TODO: systeminfo has a lot of output normally, looking for
+    #       "command not found" in this output is not very robust.
     if systeminfo and "command not found" not in systeminfo:
         data["os"] = "windows"
         data["systeminfo"] = parse_systeminfo(systeminfo)
         data["package_tags"] = ["x86_64", "msi"]
         data["arch"] = "x86_64"
         agent = r"& 'C:\Program Files\Cfengine\bin\cf-agent.exe'"
-        data["agent"] = agent
         version_cmd = powershell("{} -V".format(agent))
-        data["agent_version"] = parse_version(ssh_cmd(connection, version_cmd))
+        version_output = ssh_cmd(connection, version_cmd)
+        if version_output:
+            data["agent"] = agent
+        else:
+            data["agent"] = None
+        data["agent_version"] = parse_version(version_output)
         data["role"] = "client"
+        if data["agent_version"]:
+            data["role"] = "client"
+        else:
+            data["role"] = None
     else:
         data["os"] = "unix"
 
@@ -270,12 +284,15 @@ def get_info(host, *, users=None, connection=None):
 
         data["package_tags"] = get_package_tags(os_release_data, redhat_release_data)
         data["cfengine_id"] = discovery.get("NTD_CFENGINE_ID")
-        data["agent_location"] = discovery.get("NTD_CFAGENT_PATH")
+        data["agent"] = discovery.get("NTD_CFAGENT_PATH")
         data["policy_server"] = discovery.get("NTD_POLICY_SERVER")
-        agent = r"/var/cfengine/bin/cf-agent"
-        data["agent"] = agent
         data["agent_version"] = parse_version(discovery.get("NTD_CFAGENT_VERSION"))
-        data["role"] = "hub" if discovery.get("NTD_CFHUB") else "client"
+        if discovery.get("NTD_CFHUB"):
+            data["role"] = "hub"
+        elif discovery.get("NTD_CFAGENT_PATH"):
+            data["role"] = "client"
+        else:
+            data["role"] = None
 
         data["bin"] = {}
         for bin in [

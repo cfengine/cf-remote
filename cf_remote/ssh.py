@@ -4,6 +4,7 @@ import pwd
 import shutil
 import signal
 import subprocess
+from typing import Union
 from urllib.parse import urlparse
 
 from cf_remote import aramid
@@ -243,7 +244,7 @@ def scp(file, remote, connection=None, rename=None, hide=False):
     return 0
 
 
-def ssh_cmd(connection, cmd, errors=False, needs_pty=True):
+def ssh_cmd(connection, cmd, errors=False, needs_pty=True) -> Union[str, None]:
     assert connection
 
     if needs_pty:

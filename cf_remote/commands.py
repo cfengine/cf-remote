@@ -1056,10 +1056,10 @@ def agent(hosts, bootstrap=None):
     for host in hosts:
         data = get_info(host)
 
-        if not data["agent_location"]:
+        if not data["agent"]:
             raise CFRExitError("CFEngine not installed on {}".format(host))
 
-        command = "{}".format(data["agent_location"])
+        command = "{}".format(data["agent"])
         if bootstrap:
             command += "--bootstrap {}".format(bootstrap[0])
 

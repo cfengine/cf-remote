@@ -225,6 +225,7 @@ def get_info(host, *, users=None, connection=None):
         data["agent"] = agent
         version_cmd = powershell("{} -V".format(agent))
         data["agent_version"] = parse_version(ssh_cmd(connection, version_cmd))
+        data["role"] = "client"
     else:
         data["os"] = "unix"
 

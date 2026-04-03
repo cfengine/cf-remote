@@ -220,9 +220,10 @@ def get_info(host, *, users=None, connection=None):
     # Note: ssh_cmd is supposed to return None on failure however, it seems
     #       like there are some cases where it returns output on failure
     #       because the exit code was 0
-    # TODO: systeminfo has a lot of output normally, looking for
-    #       "command not found" in this output is not very robust.
-    if systeminfo and "command not found" not in systeminfo:
+    # TODO / Workaround:
+    if systeminfo == "bash: systeminfo: command not found":
+        systeminfo = None
+    if systeminfo:
         data["os"] = "windows"
         data["systeminfo"] = parse_systeminfo(systeminfo)
         data["package_tags"] = ["x86_64", "msi"]

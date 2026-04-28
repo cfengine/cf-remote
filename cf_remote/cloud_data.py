@@ -40,12 +40,12 @@ aws_image_criteria = {
     },
     "ubuntu-24": {
         "owner_id": "099720109477",
-        "name_pattern": "ubuntu/images/hvm-ssd-gp3/ubuntu-*-{version}*",
+        "name_pattern": "ubuntu/images/hvm-ssd-gp3/ubuntu-*-{version}.*",
         "user": "ubuntu",
     },
     "ubuntu": {
         "owner_id": "099720109477",
-        "name_pattern": "ubuntu/images/hvm-ssd/ubuntu-*-{version}*",
+        "name_pattern": "ubuntu/images/hvm-ssd/ubuntu-*-{version}.*",
         "user": "ubuntu",
     },
     "centos": {

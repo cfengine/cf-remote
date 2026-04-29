@@ -86,5 +86,6 @@ aws_image_criteria = {
         "name_pattern": "Windows_Server-{version}-English-Core-Base*",
         "user": "Administrator",
     },
+    "suse-15": {"owner_id": "013907871322", "name_pattern": "suse-sles-15-sp6*"},
     "suse": {"owner_id": "013907871322", "name_pattern": "suse-sles-{version}*"},
 }

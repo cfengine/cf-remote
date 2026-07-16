@@ -221,10 +221,17 @@ You can also pick up an existing task or file an issue in [our bug tracker](http
 
 ## Development
 
+This project uses [uv](https://docs.astral.sh/uv/) for managing the virtual environment, dependencies, building, etc.
+To set up a virtual environment with all dependencies and run all formatters, linters, and tests, use:
+
+```
+$ make check
+```
+
 To install `cf-remote` so that it reflects any changes in this source directory use:
 
 ```
-$ pip install --editable .
+$ pipx install --force --editable .
 ```
 
 ## cloud_data.py tips

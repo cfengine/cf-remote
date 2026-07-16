@@ -1,4 +1,46 @@
+# Note on backwards compatibility: cf-remote must stay installable on
+# Python 3.5 (pip <= 20.3.4, setuptools <= 50.x). Old setuptools does not
+# read the [project] table and uses setup.py, so all package metadata
+# lives in setup.py and is declared "dynamic" here. Do not add a
+# [build-system] table - the PEP 518 default (setuptools + wheel,
+# unpinned) is what allows old environments to build with old setuptools.
+# The [project] table below exists so that modern tooling (uv) can lock,
+# sync, and build the project.
+
+[project]
+name = "cf-remote"
+requires-python = ">=3.5"
+dynamic = [
+    "version",
+    "description",
+    "readme",
+    "authors",
+    "classifiers",
+    "urls",
+    "scripts",
+    "dependencies",
+]
+
+[tool.uv]
+# Install the project into the venv even though there is no [build-system]
+# table (see note above) - uv falls back to the default setuptools backend.
+package = true
+# Development environments and uv.lock only cover modern Python versions
+# (3.8.1 is the minimum for flake8), published packages still support
+# Python >= 3.5 (see note above).
+environments = ["python_full_version >= '3.8.1'"]
+
 [tool.pyright]
 include = ["cf_remote"]
 venvPath = "."
 venv = ".venv"
+
+[dependency-groups]
+dev = [
+    "black>=24.8.0",
+    "coverage>=7.6.1",
+    "flake8>=7.1.2",
+    "pyflakes>=3.2.0",
+    "pyright>=1.1.390",
+    "pytest>=8.3.4",
+]

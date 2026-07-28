@@ -341,34 +341,40 @@ def has_unescaped_character(string, char):
     return False
 
 
+def copytree_merge(src, dst, ignore=None):
+    """Backwards-compatible replacement for shutil.copytree(src, dst, dirs_exist_ok=True)"""
+    os.makedirs(dst, exist_ok=True)
+    names = os.listdir(src)
+    ignored_names = ignore(src, names) if ignore else set()
+    for name in names:
+        if name in ignored_names:
+            continue
+        src_path = os.path.join(src, name)
+        dst_path = os.path.join(dst, name)
+        if os.path.isdir(src_path):
+            copytree_merge(src_path, dst_path, ignore=ignore)
+        else:
+            shutil.copy2(src_path, dst_path)
+
+
 def migrate_config_paths():
     old_dir = os.path.expanduser("~/.cfengine/cf-remote/")
     conf_dir = os.path.expanduser("~/.config/cfengine/cf-remote/")
     cache_dir = os.path.expanduser("~/.cache/cfengine/cf-remote/")
     if not os.path.exists(os.path.dirname(old_dir)):
         return  # nothing to migrate
-    if os.path.exists(conf_dir) and os.path.exists(cache_dir):
-        pass  # Migration has already occured
-    else:
-        shutil.copytree(
-            old_dir,
-            conf_dir,
-            dirs_exist_ok=True,
-            ignore=shutil.ignore_patterns("json", "packages"),
-        )
-        print("MIGRATION: config files have been moved to '%s'" % conf_dir)
+    copytree_merge(
+        old_dir,
+        conf_dir,
+        ignore=shutil.ignore_patterns("json", "packages"),
+    )
+    print("MIGRATION: config files have been moved to '%s'" % conf_dir)
 
-        shutil.copytree(
-            os.path.join(old_dir, "json"),
-            os.path.join(cache_dir, "json"),
-            dirs_exist_ok=True,
-        )
-        shutil.copytree(
-            os.path.join(old_dir, "packages"),
-            os.path.join(cache_dir, "packages"),
-            dirs_exist_ok=True,
-        )
-        print("MIGRATION: cache files have been moved to '%s'" % cache_dir)
+    for sub in ("json", "packages"):
+        src = os.path.join(old_dir, sub)
+        if os.path.isdir(src):
+            copytree_merge(src, os.path.join(cache_dir, sub))
+    print("MIGRATION: cache files have been moved to '%s'" % cache_dir)
 
     shutil.rmtree(old_dir)
     print("REMOVED: %s" % old_dir)

@@ -62,6 +62,8 @@ jobs:
         run: bash tests/docker/0*.sh
       - name: Run unsafe tests
         run: bash tests/unsafe/0*.sh
+      - name: Run shell tests
+        run: bash tests/shell/all.sh
 
   test-legacy:
     runs-on: ubuntu-24.04
@@ -102,3 +104,5 @@ jobs:
         run: bash tests/docker/0*.sh
       - name: Run unsafe tests
         run: bash tests/unsafe/0*.sh
+      - name: Run shell tests
+        run: bash tests/shell/all.sh

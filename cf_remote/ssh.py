@@ -1,8 +1,8 @@
 import os
-import sys
 import pwd
 import shutil
 import signal
+import socket
 import subprocess
 from typing import Union
 from urllib.parse import urlparse
@@ -10,9 +10,35 @@ from urllib.parse import urlparse
 from cf_remote import aramid
 from cf_remote import log
 from cf_remote import paths
-from cf_remote.utils import whoami, read_json
+from cf_remote.utils import whoami, read_json, CFRUserError
 from cf_remote.aramid import ExecutionResult
 from cf_remote.paths import SSH_CONFIG_FPATH, SSH_CONFIGS_JSON_FPATH, CLOUD_STATE_FPATH
+
+_PREFLIGHT_TIMEOUT = 5  # seconds
+_PREFLIGHT_MAX_RETRIES = 5
+
+
+class UnreachableHostError(aramid.AramidError):
+    pass
+
+
+def _check_reachable(
+    host, port, timeout=_PREFLIGHT_TIMEOUT, max_retries=_PREFLIGHT_MAX_RETRIES
+):
+    tries = 0
+    err = ""
+    while tries < max_retries:
+        try:
+            with socket.create_connection((host, port), timeout=timeout):
+                return
+        except OSError as e:  # timeout/no-route-to-host
+            tries += 1
+            err = e
+            pass
+
+    raise UnreachableHostError(
+        "Host '%s' is unreachable on port %s: %s" % (host, port, err)
+    )
 
 
 class LocalConnection:
@@ -59,6 +85,11 @@ class Connection:
         self.ssh_port = port
         self.ssh_user = user
         self._connect_kwargs = connect_kwargs
+        self._ssh_control_master = None
+
+        # Fail fast, before starting the Control Master or entering run()'s retry loop.
+        log.debug("Checking that '%s:%s' is reachable" % (host, port))
+        _check_reachable(host, port)
 
         # Create an SSH Control Master process (man:ssh_config(5)) so that
         # commands run on this host can reuse the same SSH connection.
@@ -202,9 +233,15 @@ def connect(host, users=None):
             c.ssh_port = port
             c.run("whoami", hide=True)
             return c
+        except UnreachableHostError as e:
+            # Host is down, trying other usernames won't help. Must raise
+            # rather than sys.exit(): install() calls connect() inside a
+            # multiprocessing.dummy.Pool worker thread, where a SystemExit
+            # is silently swallowed and pool.map() hangs forever instead.
+            raise CFRUserError(str(e)) from e
         except aramid.ExecutionError:
             continue
-    sys.exit("Could not ssh into '%s'" % host)
+    raise CFRUserError("Could not ssh into '%s'" % host)
 
 
 # Decorator to make a function automatically connect

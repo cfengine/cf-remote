@@ -49,6 +49,9 @@ PRINT_OUT_FN = print
 # just a named constant
 _DEFAULT_SSH_PORT = 22
 
+_DEFAULT_MAX_ATTEMPTS = 30
+_DEFAULT_WAIT_TIMEOUT = 30  # wall-clock seconds
+
 
 class AramidError(Exception):
     """Base exception class for the aramid module"""
@@ -258,8 +261,47 @@ def _hosts_to_host_specs(hosts):
     return host_specs
 
 
-def _wait_for_tasks(hosts, tasks, ignore_failed, echo, echo_action, out_flag=""):
+def _abort_tasks(tasks):
+    """Kill and reap the subprocess of every task that hasn't finished yet"""
+    for task in tasks:
+        if not task.done and task.proc.poll() is None:
+            task.proc.kill()
+            try:
+                task.proc.wait(timeout=2)
+            except subprocess.TimeoutExpired:
+                pass
+
+
+def _wait_for_tasks(
+    hosts,
+    tasks,
+    ignore_failed,
+    echo,
+    echo_action,
+    out_flag="",
+    max_attempts=_DEFAULT_MAX_ATTEMPTS,
+    timeout=_DEFAULT_WAIT_TIMEOUT,
+):
+    start = time.monotonic()
+    attempts = 0
     while not all(task.done for task in tasks):
+        attempts += 1
+        elapsed = time.monotonic() - start
+        pending = [t.host.host_name for t in tasks if not t.done]
+
+        if elapsed > timeout:
+            _abort_tasks(tasks)
+            raise ExecutionError(
+                "Timed out after %.1fs waiting for command(s) to finish on: %s"
+                % (elapsed, ", ".join(pending))
+            )
+        if attempts > max_attempts:
+            _abort_tasks(tasks)
+            raise ExecutionError(
+                "Exceeded maximum of %d attempts waiting for command(s) to finish on: %s"
+                % (max_attempts, ", ".join(pending))
+            )
+
         for task in (t for t in tasks if not t.done):
 
             if task.proc.args[0] == "scp":

@@ -99,7 +99,10 @@ class Connection:
 
         # If the Control Master process is running (poll() returns None), let's
         # reuse its connection.
-        if self._ssh_control_master.poll() is None:
+        if (
+            self._ssh_control_master is not None
+            and self._ssh_control_master.poll() is None
+        ):
             log.debug("Control Master is running, using it")
             extra_ssh_args.extend(["-oControlPath=%s" % self._control_path])
 

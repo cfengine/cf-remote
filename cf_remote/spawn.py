@@ -351,12 +351,10 @@ def _get_image_criteria(platform_name):
     platform_parts = platform_name.split("-")
     platform = platform_parts[0]
     if platform == "ubuntu":
-        if len(platform_parts) == 2:
-            platform_version = platform_parts[1]
-        elif len(platform_parts) > 2:
+        if platform_parts[-1] in ("x64", "arm64"):
             platform_version = ".".join(platform_parts[1:-1])
         else:
-            platform_version = ""
+            platform_version = ".".join(platform_parts[1:3])
     else:
         platform_version = platform_name.count("-") > 0 and platform_parts[1] or "*"
     log.debug(

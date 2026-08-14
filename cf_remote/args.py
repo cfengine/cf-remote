@@ -284,7 +284,6 @@ def add_connect_args(sp: argparse.ArgumentParser) -> None:
     )
 
 
-@cache
 def add_switch_user_args(ap: argparse.ArgumentParser) -> None:
     password_source = ap.add_mutually_exclusive_group()
     password_source.add_argument(
@@ -314,6 +313,7 @@ def add_switch_user_args(ap: argparse.ArgumentParser) -> None:
     )
 
 
+@cache
 def get_arg_parser() -> argparse.ArgumentParser:
     ap = argparse.ArgumentParser(
         description="Spooky CFEngine at a distance",

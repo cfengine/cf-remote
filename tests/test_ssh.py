@@ -1,3 +1,5 @@
+import shlex
+
 import pytest
 
 from cf_remote import ssh
@@ -54,6 +56,13 @@ def test_switch_user_command_overrides_default():
     # command read it from standard input
     ssh.set_switch_user_password("hunter2")
     assert ssh.switch_user("cf-agent -K") == "doas -n /bin/sh -c 'cf-agent -K'"
+
+
+def test_switch_user_survives_quotes_in_the_command():
+    # A command carrying quotes of its own must not end the wrapping early.
+    # Splitting it back the way a shell would proves it arrives in one piece.
+    for cmd in ("echo it's fine", 'echo "double"', "echo 'mixed \"quotes\"'"):
+        assert shlex.split(ssh.switch_user(cmd))[-1] == cmd
 
 
 def _password_file(tmp_path, content, mode=0o600):
@@ -147,7 +156,7 @@ def test_own_switch_user_command_is_asked_with_empty_input():
 
     connection = FakeConnection(retcode=0)
     assert ssh._switch_user_needs_password(connection) is False
-    assert connection.commands == [("doas /bin/sh -c 'true'", "")]
+    assert connection.commands == [("doas /bin/sh -c true", "")]
 
     connection = FakeConnection(retcode=1)
     assert ssh._switch_user_needs_password(connection) is True

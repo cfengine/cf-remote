@@ -1,5 +1,6 @@
 import os
 import pwd
+import shlex
 import shutil
 import signal
 import socket
@@ -100,8 +101,13 @@ def get_switch_user_command():
 
 
 def switch_user(cmd):
-    """Wrap 'cmd' so that it runs as another (privileged) user"""
-    return "%s '%s'" % (get_switch_user_command(), cmd)
+    """Wrap 'cmd' so that it runs as another (privileged) user
+
+    'cmd' is quoted rather than wrapped in quotes: a command containing a
+    quote of its own would otherwise end the wrapping early and the remote
+    shell would run something else, or nothing at all.
+    """
+    return "%s %s" % (get_switch_user_command(), shlex.quote(cmd))
 
 
 def _switch_user_needs_password(connection):
@@ -386,7 +392,7 @@ def ssh_cmd(connection, cmd, errors=False, needs_pty=True) -> Union[str, None]:
     assert connection
 
     if needs_pty:
-        cmd = 'script -qec "%s" /dev/null' % cmd
+        cmd = "script -qec %s /dev/null" % shlex.quote(cmd)
 
     result = connection.run(cmd, hide=True)
     if result.retcode == 0:
@@ -444,7 +450,7 @@ def ssh_sudo(connection, cmd, errors=False, needs_pty=False):
             stdin_input = password + "\n"
 
     if needs_pty:
-        cmd = 'script -qec "%s" /dev/null' % cmd
+        cmd = "script -qec %s /dev/null" % shlex.quote(cmd)
 
     result = connection.run(cmd, hide=True, stdin_input=stdin_input)
 

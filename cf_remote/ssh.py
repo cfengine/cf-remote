@@ -121,6 +121,9 @@ def _switch_user_needs_password(connection):
     letting an attempt fail instead would count towards the failed attempts
     that pam_faillock locks accounts out over, once per host and run.
     """
+    if not connection.needs_sudo:
+        return False
+
     if get_switch_user_password() is None:
         return False
 
@@ -144,9 +147,7 @@ class LocalConnection:
     def __init__(self):
         self.ssh_user = pwd.getpwuid(os.getuid()).pw_name
         self.needs_sudo = self.run("echo $UID", hide=True).stdout.strip() != "0"
-        self.switch_user_needs_password = (
-            self.needs_sudo and _switch_user_needs_password(self)
-        )
+        self.switch_user_needs_password = _switch_user_needs_password(self)
 
     def run(self, command, hide=False, stdin_input=None):
         # to maintain Python 3.5/3.6 compatability the following are used:
@@ -212,9 +213,7 @@ class Connection:
         )
 
         self.needs_sudo = self.run("echo $UID", hide=True).stdout.strip() != "0"
-        self.switch_user_needs_password = (
-            self.needs_sudo and _switch_user_needs_password(self)
-        )
+        self.switch_user_needs_password = _switch_user_needs_password(self)
         log.debug("Connection initialized")
 
     def __del__(self):

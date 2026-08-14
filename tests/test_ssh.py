@@ -96,7 +96,7 @@ def test_missing_password_file_is_refused(tmp_path):
 
 class FakeConnection:
     ssh_host = "somehost"
-    needs_sudo = False
+    needs_sudo = True
     switch_user_needs_password = False
 
     def __init__(self, retcode=0):
@@ -110,6 +110,16 @@ class FakeConnection:
 
 def test_no_password_means_no_asking():
     connection = FakeConnection()
+    assert ssh._switch_user_needs_password(connection) is False
+    assert connection.commands == []
+
+
+def test_root_is_never_asked():
+    # Nothing to switch to, so no round trip and nothing to send
+    ssh.set_switch_user_password("hunter2")
+    connection = FakeConnection()
+    connection.needs_sudo = False
+
     assert ssh._switch_user_needs_password(connection) is False
     assert connection.commands == []
 
@@ -130,7 +140,6 @@ def test_asking_never_attempts_authentication():
 def test_password_goes_on_standard_input():
     ssh.set_switch_user_password("hunter2")
     connection = FakeConnection()
-    connection.needs_sudo = True
     connection.switch_user_needs_password = True
 
     ssh.ssh_sudo(connection, "id -un")
@@ -141,7 +150,6 @@ def test_password_is_withheld_where_it_isnt_needed():
     # Otherwise it ends up on the standard input of the command instead
     ssh.set_switch_user_password("hunter2")
     connection = FakeConnection()
-    connection.needs_sudo = True
     connection.switch_user_needs_password = False
 
     ssh.ssh_sudo(connection, "id -un")

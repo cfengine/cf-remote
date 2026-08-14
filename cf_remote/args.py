@@ -2,6 +2,7 @@ import argparse
 import os
 import sys
 
+from cf_remote import ssh
 from cf_remote.utils import cache
 
 
@@ -284,6 +285,35 @@ def add_connect_args(sp: argparse.ArgumentParser) -> None:
 
 
 @cache
+def add_switch_user_args(ap: argparse.ArgumentParser) -> None:
+    password_source = ap.add_mutually_exclusive_group()
+    password_source.add_argument(
+        "--ask-pass",
+        "-K",
+        help="Prompt for the password used to switch user on the remote hosts."
+        + " The password is asked for once and used for all hosts",
+        action="store_true",
+    )
+    password_source.add_argument(
+        "--password-file",
+        help="Read the password used to switch user from the first line of a"
+        + " file, for use where there is nobody to answer --ask-pass."
+        + " The file must not be readable by others",
+        type=str,
+    )
+    ap.add_argument(
+        "--switch-user-command",
+        help="Command used to run commands as another (privileged) user."
+        + " The command to run is appended as a single quoted argument."
+        + " Defaults to '%s', or '%s' when --ask-pass is used"
+        % (
+            ssh.DEFAULT_SWITCH_USER_COMMAND,
+            ssh.DEFAULT_SWITCH_USER_COMMAND_WITH_PASSWORD,
+        ),
+        type=str,
+    )
+
+
 def get_arg_parser() -> argparse.ArgumentParser:
     ap = argparse.ArgumentParser(
         description="Spooky CFEngine at a distance",
@@ -304,6 +334,7 @@ def get_arg_parser() -> argparse.ArgumentParser:
         type=str,
         const=True,
     )
+    add_switch_user_args(ap)
 
     command_help_hint = (
         "Commands (use %s COMMAND --help to get more info)"

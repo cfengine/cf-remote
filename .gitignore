@@ -8,6 +8,8 @@ dist
 log
 __pycache__/
 **/.DS_STORE
+/tests/docker/sudo/id_test
+/tests/docker/sudo/id_test.pub
 
 # coverage
 .coverage.*

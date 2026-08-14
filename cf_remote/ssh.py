@@ -41,6 +41,95 @@ def _check_reachable(
     )
 
 
+DEFAULT_SWITCH_USER_COMMAND = "sudo bash -c"
+"""Command used to run commands as another (privileged) user"""
+
+DEFAULT_SWITCH_USER_COMMAND_WITH_PASSWORD = "sudo -S -p '' bash -c"
+"""Same, but reading the password from standard input instead of a terminal"""
+
+_switch_user_command = None
+_switch_user_password = None
+
+
+def set_switch_user_command(command):
+    global _switch_user_command
+    _switch_user_command = command
+
+
+def set_switch_user_password(password):
+    global _switch_user_password
+    _switch_user_password = password
+
+
+def read_switch_user_password(path):
+    """Read the password for switching user from the first line of a file
+
+    Refuses to read a file others can read, the same way ssh refuses to use a
+    private key with too generous permissions.
+    """
+    path = os.path.expanduser(path)
+    if not os.path.isfile(path):
+        raise CFRUserError("Password file '%s' does not exist" % path)
+
+    if os.name == "posix" and (os.stat(path).st_mode & 0o077):
+        raise CFRUserError(
+            "Password file '%s' is readable by others, run"
+            " 'chmod 600 %s' before using it" % (path, path)
+        )
+
+    try:
+        with open(path, "r") as f:
+            line = f.readline()
+    except OSError as e:
+        raise CFRUserError("Cannot read password file '%s': %s" % (path, e))
+
+    # Only the newline the editor added, a password may well end in a space
+    return line.rstrip("\r\n")
+
+
+def get_switch_user_password():
+    return _switch_user_password
+
+
+def get_switch_user_command():
+    if _switch_user_command is not None:
+        return _switch_user_command
+    if _switch_user_password is not None:
+        return DEFAULT_SWITCH_USER_COMMAND_WITH_PASSWORD
+    return DEFAULT_SWITCH_USER_COMMAND
+
+
+def switch_user(cmd):
+    """Wrap 'cmd' so that it runs as another (privileged) user"""
+    return "%s '%s'" % (get_switch_user_command(), cmd)
+
+
+def _switch_user_needs_password(connection):
+    """Check whether switching user on this host requires a password
+
+    Only interesting when we actually have a password to send. Sending it
+    when it isn't needed would leave it on the standard input of the command
+    we are running instead.
+
+    'sudo -n' answers this without ever attempting to authenticate. Asking by
+    letting an attempt fail instead would count towards the failed attempts
+    that pam_faillock locks accounts out over, once per host and run.
+    """
+    if get_switch_user_password() is None:
+        return False
+
+    if _switch_user_command is not None:
+        # A command we didn't pick has no 'sudo -n' to ask with, so run it
+        # with nothing on standard input: one that wants a password fails
+        # right away rather than taking ours. Assuming it wants one instead
+        # would hand the password to whatever runs when it doesn't.
+        return (
+            connection.run(switch_user("true"), hide=True, stdin_input="").retcode != 0
+        )
+
+    return connection.run("sudo -n true", hide=True).retcode != 0
+
+
 class LocalConnection:
     is_local = True
     ssh_user = None
@@ -49,13 +138,17 @@ class LocalConnection:
     def __init__(self):
         self.ssh_user = pwd.getpwuid(os.getuid()).pw_name
         self.needs_sudo = self.run("echo $UID", hide=True).stdout.strip() != "0"
+        self.switch_user_needs_password = (
+            self.needs_sudo and _switch_user_needs_password(self)
+        )
 
-    def run(self, command, hide=False):
+    def run(self, command, hide=False, stdin_input=None):
         # to maintain Python 3.5/3.6 compatability the following are used:
         # stdout=PIPE, stderr=STDOUT instead of capture_output=True
         # universal_newlines=True instead of text=True
         result = subprocess.run(
             command,
+            input=stdin_input,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             shell=True,
@@ -113,6 +206,9 @@ class Connection:
         )
 
         self.needs_sudo = self.run("echo $UID", hide=True).stdout.strip() != "0"
+        self.switch_user_needs_password = (
+            self.needs_sudo and _switch_user_needs_password(self)
+        )
         log.debug("Connection initialized")
 
     def __del__(self):
@@ -123,7 +219,7 @@ class Connection:
         ):
             self._ssh_control_master.send_signal(signal.SIGTERM)
 
-    def run(self, command, hide=False):
+    def run(self, command, hide=False, stdin_input=None):
         extra_ssh_args = []
         if self._connect_kwargs and "key_filename" in self._connect_kwargs:
             extra_ssh_args.extend(["-i", self._connect_kwargs["key_filename"]])
@@ -138,7 +234,9 @@ class Connection:
             extra_ssh_args.extend(["-oControlPath=%s" % self._control_path])
 
         ahost = aramid.Host(self.ssh_host, self.ssh_user, self.ssh_port, extra_ssh_args)
-        results = aramid.execute([ahost], command, echo=(not hide))
+        results = aramid.execute(
+            [ahost], command, echo=(not hide), stdin_input=stdin_input
+        )
         return results[ahost][0]
 
     def put(self, src, hide=False):
@@ -308,16 +406,47 @@ def ssh_cmd(connection, cmd, errors=False, needs_pty=True) -> Union[str, None]:
         return None
 
 
+def _switch_user_hint(connection, result):
+    """Explain a switch user failure caused by the password, if that's what it is"""
+    output = (result.stdout or "") + (result.stderr or "")
+    output = output.lower()
+
+    if "try again" in output or "incorrect password" in output:
+        return "Password for switching user was rejected on '%s'" % connection.ssh_host
+
+    needs_password = (
+        "a terminal is required" in output
+        or "a password is required" in output
+        or "no tty present" in output
+    )
+    if needs_password:
+        if get_switch_user_password() is None:
+            return (
+                "Switching user requires a password on '%s',"
+                " rerun with --ask-pass to be prompted for it" % connection.ssh_host
+            )
+        return (
+            "Switching user asked for a password on '%s' after reporting that"
+            " it didn't need one, so none was sent" % connection.ssh_host
+        )
+
+    return None
+
+
 def ssh_sudo(connection, cmd, errors=False, needs_pty=False):
     assert connection
 
+    stdin_input = None
     if connection.needs_sudo:
-        cmd = "sudo bash -c '%s'" % cmd
+        cmd = switch_user(cmd)
+        password = get_switch_user_password()
+        if connection.switch_user_needs_password and password is not None:
+            stdin_input = password + "\n"
 
     if needs_pty:
         cmd = 'script -qec "%s" /dev/null' % cmd
 
-    result = connection.run(cmd, hide=True)
+    result = connection.run(cmd, hide=True, stdin_input=stdin_input)
 
     if result.retcode == 0:
         output = result.stdout.strip("\n")
@@ -325,6 +454,9 @@ def ssh_sudo(connection, cmd, errors=False, needs_pty=False):
         return output
     else:
         msg = "Sudo command unexpectedly exited: '%s' [%d]" % (cmd, result.retcode)
+        hint = _switch_user_hint(connection, result)
+        if hint:
+            log.error(hint)
         if errors:
             print(result.stdout if result.stdout is not None else "")
             print(result.stderr if result.stderr is not None else "")

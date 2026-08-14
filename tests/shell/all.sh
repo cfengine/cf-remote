@@ -44,6 +44,7 @@ run_test() {
 }
 
 run_test tests/shell/001_migrate_dirs.sh
+run_test tests/shell/002_sudo_password.sh
 
 # Summary
 _suite_end=$(date +%s)

@@ -1,9 +1,11 @@
+import getpass
 import os
 import sys
 import re
 import socket
 
 from cf_remote import log
+from cf_remote import ssh
 from cf_remote import version
 from cf_remote import commands, paths
 from cf_remote.args import get_arg_parser
@@ -347,6 +349,13 @@ def _main() -> int:
     if args.log_level:
         log.set_level(args.log_level)
     validate_args(args)
+
+    if args.switch_user_command:
+        ssh.set_switch_user_command(args.switch_user_command)
+    if args.ask_pass:
+        ssh.set_switch_user_password(getpass.getpass("Password for switching user: "))
+    elif args.password_file:
+        ssh.set_switch_user_password(ssh.read_switch_user_password(args.password_file))
 
     exit_code = run_command_with_args(args.command, args)
     assert type(exit_code) is int

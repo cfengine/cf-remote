@@ -48,19 +48,6 @@ DEFAULT_SWITCH_USER_COMMAND = "sudo bash -c"
 DEFAULT_SWITCH_USER_COMMAND_WITH_PASSWORD = "sudo -S -p '' bash -c"
 """Same, but reading the password from standard input instead of a terminal"""
 
-_switch_user_command = None
-_switch_user_password = None
-
-
-def set_switch_user_command(command):
-    global _switch_user_command
-    _switch_user_command = command
-
-
-def set_switch_user_password(password):
-    global _switch_user_password
-    _switch_user_password = password
-
 
 def read_switch_user_password(path):
     """Read the password for switching user from the first line of a file
@@ -88,55 +75,82 @@ def read_switch_user_password(path):
     return line.rstrip("\r\n")
 
 
-def get_switch_user_password():
-    return _switch_user_password
+class SwitchUser:
+    """How to run commands as another (privileged) user on the remote hosts
 
-
-def get_switch_user_command():
-    if _switch_user_command is not None:
-        return _switch_user_command
-    if _switch_user_password is not None:
-        return DEFAULT_SWITCH_USER_COMMAND_WITH_PASSWORD
-    return DEFAULT_SWITCH_USER_COMMAND
-
-
-def switch_user(cmd):
-    """Wrap 'cmd' so that it runs as another (privileged) user
-
-    'cmd' is quoted rather than wrapped in quotes: a command containing a
-    quote of its own would otherwise end the wrapping early and the remote
-    shell would run something else, or nothing at all.
+    Built once from the command line options and passed to the connections it
+    applies to. Nothing here changes after that, so the settings of a run
+    cannot be read before they are complete, and a test can make one of these
+    without having to put anything back afterwards.
     """
-    return "%s %s" % (get_switch_user_command(), shlex.quote(cmd))
 
+    def __init__(self, command=None, password=None):
+        """
+        :param str command: command to run commands as another user with, the
+                            command to run is appended as a single quoted
+                            argument. `None` picks a default depending on
+                            whether there is a password to send.
+        :param str password: password to send to :param:`command`, or `None`
+                             when there is none to send.
+        """
+        self._command = command
+        self._password = password
 
-def _switch_user_needs_password(connection):
-    """Check whether switching user on this host requires a password
+    @property
+    def password(self):
+        return self._password
 
-    Only interesting when we actually have a password to send. Sending it
-    when it isn't needed would leave it on the standard input of the command
-    we are running instead.
+    @property
+    def is_command_given(self):
+        """Whether the command is one we were given rather than one we picked"""
+        return self._command is not None
 
-    'sudo -n' answers this without ever attempting to authenticate. Asking by
-    letting an attempt fail instead would count towards the failed attempts
-    that pam_faillock locks accounts out over, once per host and run.
-    """
-    if not connection.needs_sudo:
-        return False
+    @property
+    def command(self):
+        if self._command is not None:
+            return self._command
+        if self._password is not None:
+            return DEFAULT_SWITCH_USER_COMMAND_WITH_PASSWORD
+        return DEFAULT_SWITCH_USER_COMMAND
 
-    if get_switch_user_password() is None:
-        return False
+    def wrap(self, cmd):
+        """Wrap 'cmd' so that it runs as another (privileged) user
 
-    if _switch_user_command is not None:
-        # A command we didn't pick has no 'sudo -n' to ask with, so run it
-        # with nothing on standard input: one that wants a password fails
-        # right away rather than taking ours. Assuming it wants one instead
-        # would hand the password to whatever runs when it doesn't.
-        return (
-            connection.run(switch_user("true"), hide=True, stdin_input="").retcode != 0
-        )
+        'cmd' is quoted rather than wrapped in quotes: a command containing a
+        quote of its own would otherwise end the wrapping early and the remote
+        shell would run something else, or nothing at all.
+        """
+        return "%s %s" % (self.command, shlex.quote(cmd))
 
-    return connection.run("sudo -n true", hide=True).retcode != 0
+    def needs_password_on(self, connection):
+        """Check whether switching user on this host requires a password
+
+        Only interesting when we actually have a password to send. Sending it
+        when it isn't needed would leave it on the standard input of the
+        command we are running instead.
+
+        'sudo -n' answers this without ever attempting to authenticate. Asking
+        by letting an attempt fail instead would count towards the failed
+        attempts that pam_faillock locks accounts out over, once per host and
+        run.
+        """
+        if not connection.needs_sudo:
+            return False
+
+        if self._password is None:
+            return False
+
+        if self.is_command_given:
+            # A command we didn't pick has no 'sudo -n' to ask with, so run it
+            # with nothing on standard input: one that wants a password fails
+            # right away rather than taking ours. Assuming it wants one instead
+            # would hand the password to whatever runs when it doesn't.
+            return (
+                connection.run(self.wrap("true"), hide=True, stdin_input="").retcode
+                != 0
+            )
+
+        return connection.run("sudo -n true", hide=True).retcode != 0
 
 
 class LocalConnection:
@@ -144,10 +158,11 @@ class LocalConnection:
     ssh_user = None
     ssh_host = "localhost"
 
-    def __init__(self):
+    def __init__(self, switch_user=None):
         self.ssh_user = pwd.getpwuid(os.getuid()).pw_name
+        self.switch_user = switch_user or SwitchUser()
         self.needs_sudo = self.run("echo $UID", hide=True).stdout.strip() != "0"
-        self.switch_user_needs_password = _switch_user_needs_password(self)
+        self.switch_user_needs_password = self.switch_user.needs_password_on(self)
 
     def run(self, command, hide=False, stdin_input=None):
         # to maintain Python 3.5/3.6 compatability the following are used:
@@ -175,7 +190,14 @@ class LocalConnection:
 
 
 class Connection:
-    def __init__(self, host, user, connect_kwargs=None, port=aramid._DEFAULT_SSH_PORT):
+    def __init__(
+        self,
+        host,
+        user,
+        connect_kwargs=None,
+        port=aramid._DEFAULT_SSH_PORT,
+        switch_user=None,
+    ):
         log.debug(
             "Initializing Connection: host '%s' user '%s' port '%s'"
             % (host, user, port)
@@ -184,6 +206,7 @@ class Connection:
         self.ssh_host = host
         self.ssh_port = port
         self.ssh_user = user
+        self.switch_user = switch_user or SwitchUser()
         self._connect_kwargs = connect_kwargs
         self._ssh_control_master = None
 
@@ -213,7 +236,7 @@ class Connection:
         )
 
         self.needs_sudo = self.run("echo $UID", hide=True).stdout.strip() != "0"
-        self.switch_user_needs_password = _switch_user_needs_password(self)
+        self.switch_user_needs_password = self.switch_user.needs_password_on(self)
         log.debug("Connection initialized")
 
     def __del__(self):
@@ -294,7 +317,7 @@ def get_state_from_host(host):
                 return data
 
 
-def connect(host, users=None):
+def connect(host, users=None, switch_user=None):
     log.debug("Connecting to '%s'" % host)
     log.debug("users= '%s'" % users)
 
@@ -329,7 +352,11 @@ def connect(host, users=None):
             if key:
                 connect_kwargs["key_filename"] = os.path.expanduser(key)
             c = Connection(
-                host=host, user=user, port=port, connect_kwargs=connect_kwargs
+                host=host,
+                user=user,
+                port=port,
+                connect_kwargs=connect_kwargs,
+                switch_user=switch_user,
             )
             c.ssh_user = user
             c.ssh_host = host
@@ -351,16 +378,23 @@ def connect(host, users=None):
 # Requires that first positional argument is host
 # and connection should be a keyword argument with default None
 # Uses a context manager (with) to ensure connections are closed
+#
+# A 'switch_user' keyword argument, like 'users', is read here to make the
+# connection with. A connection we are given already carries the one it was
+# made with, so it is only of interest when we make one ourselves.
 def auto_connect(func):
     log.debug("Building config file")
     _build_ssh_config()
 
     def connect_wrapper(host, *args, **kwargs):
+        switch_user = kwargs.get("switch_user")
         if not kwargs.get("connection"):
             if host == "localhost":
-                kwargs["connection"] = LocalConnection()
+                kwargs["connection"] = LocalConnection(switch_user=switch_user)
                 return func(host, *args, **kwargs)
-            with connect(host, users=kwargs.get("users")) as connection:
+            with connect(
+                host, users=kwargs.get("users"), switch_user=switch_user
+            ) as connection:
                 assert connection
                 kwargs["connection"] = connection
                 return func(host, *args, **kwargs)
@@ -369,9 +403,9 @@ def auto_connect(func):
     return connect_wrapper
 
 
-def scp(file, remote, connection=None, rename=None, hide=False):
+def scp(file, remote, connection=None, rename=None, hide=False, switch_user=None):
     if not connection:
-        with connect(remote) as connection:
+        with connect(remote, switch_user=switch_user) as connection:
             scp(file, remote, connection, rename, hide=hide)
     else:
         if not hide:
@@ -425,7 +459,7 @@ def _switch_user_hint(connection, result):
         or "no tty present" in output
     )
     if needs_password:
-        if get_switch_user_password() is None:
+        if connection.switch_user.password is None:
             return (
                 "Switching user requires a password on '%s',"
                 " rerun with --ask-pass to be prompted for it" % connection.ssh_host
@@ -443,8 +477,8 @@ def ssh_sudo(connection, cmd, errors=False, needs_pty=False):
 
     stdin_input = None
     if connection.needs_sudo:
-        cmd = switch_user(cmd)
-        password = get_switch_user_password()
+        cmd = connection.switch_user.wrap(cmd)
+        password = connection.switch_user.password
         if connection.switch_user_needs_password and password is not None:
             stdin_input = password + "\n"
 

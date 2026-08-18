@@ -30,39 +30,44 @@ def test_failed_command():
     nope("localhost")
 
 
-@pytest.fixture(autouse=True)
-def reset_switch_user():
-    """Keep the switch user settings from leaking between tests"""
-    yield
-    ssh.set_switch_user_command(None)
-    ssh.set_switch_user_password(None)
-
-
 def test_switch_user_default():
-    assert ssh.switch_user("cf-agent -K") == "sudo bash -c 'cf-agent -K'"
+    assert ssh.SwitchUser().wrap("cf-agent -K") == "sudo bash -c 'cf-agent -K'"
 
 
 def test_switch_user_with_password():
     # With a password to send, sudo has to read it from standard input
-    ssh.set_switch_user_password("hunter2")
-    assert ssh.switch_user("cf-agent -K") == "sudo -S -p '' bash -c 'cf-agent -K'"
+    switch_user = ssh.SwitchUser(password="hunter2")
+    assert switch_user.wrap("cf-agent -K") == "sudo -S -p '' bash -c 'cf-agent -K'"
 
 
 def test_switch_user_command_overrides_default():
-    ssh.set_switch_user_command("doas -n /bin/sh -c")
-    assert ssh.switch_user("cf-agent -K") == "doas -n /bin/sh -c 'cf-agent -K'"
+    switch_user = ssh.SwitchUser(command="doas -n /bin/sh -c")
+    assert switch_user.wrap("cf-agent -K") == "doas -n /bin/sh -c 'cf-agent -K'"
 
     # ... also when a password is given, then it's up to the user to make the
     # command read it from standard input
-    ssh.set_switch_user_password("hunter2")
-    assert ssh.switch_user("cf-agent -K") == "doas -n /bin/sh -c 'cf-agent -K'"
+    switch_user = ssh.SwitchUser(command="doas -n /bin/sh -c", password="hunter2")
+    assert switch_user.wrap("cf-agent -K") == "doas -n /bin/sh -c 'cf-agent -K'"
+
+
+def test_switch_user_settings_do_not_leak_between_connections():
+    # Two hosts in the same run can be reached with different settings, and
+    # one of these cannot change what another one already answers
+    plain = ssh.SwitchUser()
+    with_password = ssh.SwitchUser(password="hunter2")
+
+    assert plain.password is None
+    assert plain.command == "sudo bash -c"
+    assert with_password.password == "hunter2"
+    assert with_password.command == "sudo -S -p '' bash -c"
 
 
 def test_switch_user_survives_quotes_in_the_command():
     # A command carrying quotes of its own must not end the wrapping early.
     # Splitting it back the way a shell would proves it arrives in one piece.
+    switch_user = ssh.SwitchUser()
     for cmd in ("echo it's fine", 'echo "double"', "echo 'mixed \"quotes\"'"):
-        assert shlex.split(ssh.switch_user(cmd))[-1] == cmd
+        assert shlex.split(switch_user.wrap(cmd))[-1] == cmd
 
 
 def _password_file(tmp_path, content, mode=0o600):
@@ -99,9 +104,10 @@ class FakeConnection:
     needs_sudo = True
     switch_user_needs_password = False
 
-    def __init__(self, retcode=0):
+    def __init__(self, retcode=0, switch_user=None):
         self.retcode = retcode
         self.commands = []
+        self.switch_user = switch_user or ssh.SwitchUser()
 
     def run(self, command, hide=False, stdin_input=None):
         self.commands.append((command, stdin_input))
@@ -110,36 +116,34 @@ class FakeConnection:
 
 def test_no_password_means_no_asking():
     connection = FakeConnection()
-    assert ssh._switch_user_needs_password(connection) is False
+    assert connection.switch_user.needs_password_on(connection) is False
     assert connection.commands == []
 
 
 def test_root_is_never_asked():
     # Nothing to switch to, so no round trip and nothing to send
-    ssh.set_switch_user_password("hunter2")
-    connection = FakeConnection()
+    connection = FakeConnection(switch_user=ssh.SwitchUser(password="hunter2"))
     connection.needs_sudo = False
 
-    assert ssh._switch_user_needs_password(connection) is False
+    assert connection.switch_user.needs_password_on(connection) is False
     assert connection.commands == []
 
 
 def test_asking_never_attempts_authentication():
     # A failed attempt is what pam_faillock counts, so this must not make one
-    ssh.set_switch_user_password("hunter2")
+    switch_user = ssh.SwitchUser(password="hunter2")
 
-    connection = FakeConnection(retcode=1)
-    assert ssh._switch_user_needs_password(connection) is True
+    connection = FakeConnection(retcode=1, switch_user=switch_user)
+    assert switch_user.needs_password_on(connection) is True
     assert connection.commands == [("sudo -n true", None)]
 
-    connection = FakeConnection(retcode=0)
-    assert ssh._switch_user_needs_password(connection) is False
+    connection = FakeConnection(retcode=0, switch_user=switch_user)
+    assert switch_user.needs_password_on(connection) is False
     assert connection.commands == [("sudo -n true", None)]
 
 
 def test_password_goes_on_standard_input():
-    ssh.set_switch_user_password("hunter2")
-    connection = FakeConnection()
+    connection = FakeConnection(switch_user=ssh.SwitchUser(password="hunter2"))
     connection.switch_user_needs_password = True
 
     ssh.ssh_sudo(connection, "id -un")
@@ -148,8 +152,7 @@ def test_password_goes_on_standard_input():
 
 def test_password_is_withheld_where_it_isnt_needed():
     # Otherwise it ends up on the standard input of the command instead
-    ssh.set_switch_user_password("hunter2")
-    connection = FakeConnection()
+    connection = FakeConnection(switch_user=ssh.SwitchUser(password="hunter2"))
     connection.switch_user_needs_password = False
 
     ssh.ssh_sudo(connection, "id -un")
@@ -159,15 +162,14 @@ def test_password_is_withheld_where_it_isnt_needed():
 def test_own_switch_user_command_is_asked_with_empty_input():
     # Assuming it wants a password would hand the password to whatever runs
     # when it doesn't, so ask, with nothing it could mistake for one
-    ssh.set_switch_user_password("hunter2")
-    ssh.set_switch_user_command("doas /bin/sh -c")
+    switch_user = ssh.SwitchUser(command="doas /bin/sh -c", password="hunter2")
 
-    connection = FakeConnection(retcode=0)
-    assert ssh._switch_user_needs_password(connection) is False
+    connection = FakeConnection(retcode=0, switch_user=switch_user)
+    assert switch_user.needs_password_on(connection) is False
     assert connection.commands == [("doas /bin/sh -c true", "")]
 
-    connection = FakeConnection(retcode=1)
-    assert ssh._switch_user_needs_password(connection) is True
+    connection = FakeConnection(retcode=1, switch_user=switch_user)
+    assert switch_user.needs_password_on(connection) is True
 
 
 def _failure(stderr):
@@ -183,18 +185,18 @@ def test_switch_user_hint_suggests_ask_pass():
 
 
 def test_switch_user_hint_reports_rejected_password():
-    ssh.set_switch_user_password("hunter2")
+    connection = FakeConnection(switch_user=ssh.SwitchUser(password="hunter2"))
     result = _failure("Sorry, try again.\nsudo: 1 incorrect password attempt")
-    hint = ssh._switch_user_hint(FakeConnection(), result)
+    hint = ssh._switch_user_hint(connection, result)
     assert hint is not None
     assert "rejected" in hint
 
 
 def test_switch_user_hint_reports_password_that_was_never_sent():
     # Asking said no password was needed, but the command disagreed
-    ssh.set_switch_user_password("hunter2")
+    connection = FakeConnection(switch_user=ssh.SwitchUser(password="hunter2"))
     result = _failure("sudo: a password is required")
-    hint = ssh._switch_user_hint(FakeConnection(), result)
+    hint = ssh._switch_user_hint(connection, result)
     assert hint is not None
     assert "none was sent" in hint
 

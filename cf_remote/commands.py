@@ -53,7 +53,7 @@ from cf_remote import log
 from cf_remote import cloud_data
 
 
-def info(hosts, users=None, all=False):
+def info(hosts, users=None, all=False, switch_user=None):
     if all:
         hosts = _get_all_hosts()
     elif not hosts:
@@ -69,7 +69,7 @@ def info(hosts, users=None, all=False):
     log.debug("hosts='{}'".format(hosts))
     errors = 0
     for host in hosts:
-        data = get_info(host, users=users)
+        data = get_info(host, users=users, switch_user=switch_user)
         if data:
             print_info(data)
         else:
@@ -77,11 +77,17 @@ def info(hosts, users=None, all=False):
     return errors
 
 
-def run(hosts, command, users=None, sudo=False, raw=False):
+def run(hosts, command, users=None, sudo=False, raw=False, switch_user=None):
     assert hosts
     errors = 0
     for host in hosts:
-        lines = run_command(host=host, command=command, users=users, sudo=sudo)
+        lines = run_command(
+            host=host,
+            command=command,
+            users=users,
+            sudo=sudo,
+            switch_user=switch_user,
+        )
         if lines is None:
             log.error("Command: '{}'\nFailed on host: '{}'".format(command, host))
             errors += 1
@@ -107,15 +113,15 @@ def run(hosts, command, users=None, sudo=False, raw=False):
     return errors
 
 
-def sudo(hosts, command, users=None, raw=False):
-    return run(hosts, command, users, sudo=True, raw=raw)
+def sudo(hosts, command, users=None, raw=False, switch_user=None):
+    return run(hosts, command, users, sudo=True, raw=raw, switch_user=switch_user)
 
 
-def scp(hosts, files, users=None):
+def scp(hosts, files, users=None, switch_user=None):
     errors = 0
     for host in hosts:
         for file in files:
-            errors += transfer_file(host, file, users)
+            errors += transfer_file(host, file, users, switch_user=switch_user)
     return errors
 
 
@@ -197,7 +203,8 @@ def install(
     edition=None,
     remote_download=False,
     trust_keys=None,
-    insecure=False
+    insecure=False,
+    switch_user=None
 ):
     assert hubs or clients
     assert not (hubs and clients and package)
@@ -269,6 +276,7 @@ def install(
                     insecure=insecure,
                     demo_salt=salt,
                     demo_sha=sha,
+                    switch_user=switch_user,
                 )
             )
 
@@ -305,6 +313,7 @@ def install(
                 show_info=show_host_info,
                 remote_download=remote_download,
                 trust_keys=trust_keys,
+                switch_user=switch_user,
             )
         )
 
@@ -937,14 +946,14 @@ def show(ansible_inventory):
     return 0
 
 
-def uninstall(hosts, purge=False):
+def uninstall(hosts, purge=False, switch_user=None):
     errors = 0
     for host in hosts:
-        errors += uninstall_host(host, purge=purge)
+        errors += uninstall_host(host, purge=purge, switch_user=switch_user)
     return errors
 
 
-def deploy_tarball(hubs, tarball):
+def deploy_tarball(hubs, tarball, switch_user=None):
     assert os.path.isfile(tarball)
 
     if not tarball.endswith((".tgz", ".tar.gz")):
@@ -955,7 +964,7 @@ def deploy_tarball(hubs, tarball):
 
     errors = 0
     for hub in hubs:
-        errors += deploy_masterfiles(hub, tarball)
+        errors += deploy_masterfiles(hub, tarball, switch_user=switch_user)
     return errors
 
 
@@ -981,7 +990,7 @@ def _get_hubs():
     return _get_all_hosts(role="hub")
 
 
-def deploy(hubs, masterfiles):
+def deploy(hubs, masterfiles, switch_user=None):
     if not hubs:
         hubs = _get_hubs()
         if hubs:
@@ -1022,7 +1031,7 @@ def deploy(hubs, masterfiles):
     masterfiles = masterfiles.rstrip("/")
 
     if os.path.isfile(masterfiles):
-        return deploy_tarball(hubs, masterfiles)
+        return deploy_tarball(hubs, masterfiles, switch_user=switch_user)
 
     if masterfiles.endswith((".tgz", ".tar.gz")):
         if not os.path.exists(masterfiles):
@@ -1070,10 +1079,10 @@ def deploy(hubs, masterfiles):
     above = directory[0 : -len("/masterfiles")]
     os.system("rm -rf %s" % tarball)
     os.system("tar -czf %s -C %s masterfiles" % (tarball, above))
-    return deploy_tarball(hubs, tarball)
+    return deploy_tarball(hubs, tarball, switch_user=switch_user)
 
 
-def agent(hosts, bootstrap=None):
+def agent(hosts, bootstrap=None, switch_user=None):
     if bootstrap and len(bootstrap) > 1:
         raise CFRExitError(
             "Cannot boostrap {} to {}. Cannot bootstrap to more than one host.".format(
@@ -1082,7 +1091,7 @@ def agent(hosts, bootstrap=None):
         )
 
     for host in hosts:
-        data = get_info(host)
+        data = get_info(host, switch_user=switch_user)
 
         if not data["agent"]:
             raise CFRExitError("CFEngine not installed on {}".format(host))
@@ -1094,7 +1103,7 @@ def agent(hosts, bootstrap=None):
 
         command = " ".join(args)
 
-        output = run_command(host, command, sudo=True)
+        output = run_command(host, command, sudo=True, switch_user=switch_user)
         if output:
             print(output)
 

@@ -44,9 +44,26 @@ def get_args():
     return args
 
 
-def run_command_with_args(command, args) -> int:
+def _switch_user_from_args(args) -> ssh.SwitchUser:
+    """Build how to switch user on the remote hosts from the command line options
+
+    Asks for the password here, once, rather than per host: the commands below
+    get a finished object to hand to the connections they make.
+    """
+    password = None
+    if args.ask_pass:
+        password = getpass.getpass("Password for switching user: ")
+    elif args.password_file:
+        password = ssh.read_switch_user_password(args.password_file)
+
+    return ssh.SwitchUser(command=args.switch_user_command, password=password)
+
+
+def run_command_with_args(command, args, switch_user=None) -> int:
     if command == "info":
-        return commands.info(args.hosts, users=None, all=args.all)
+        return commands.info(
+            args.hosts, users=None, all=args.all, switch_user=switch_user
+        )
     elif command == "install":
         if args.trust_keys:
             trust_keys = args.trust_keys.split(",")
@@ -67,10 +84,11 @@ def run_command_with_args(command, args) -> int:
             remote_download=args.remote_download,
             trust_keys=trust_keys,
             insecure=args.insecure,
+            switch_user=switch_user,
         )
     elif command == "uninstall":
         all_hosts = (args.hosts or []) + (args.hub or []) + (args.clients or [])
-        return commands.uninstall(all_hosts, purge=args.purge)
+        return commands.uninstall(all_hosts, purge=args.purge, switch_user=switch_user)
     elif command == "packages":
         log.warning(
             "packages command is deprecated, please use the new command: download"
@@ -97,15 +115,23 @@ def run_command_with_args(command, args) -> int:
             allow_expired=args.allow_expired,
         )
     elif command == "run":
-        return commands.run(hosts=args.hosts, raw=args.raw, command=args.remote_command)
+        return commands.run(
+            hosts=args.hosts,
+            raw=args.raw,
+            command=args.remote_command,
+            switch_user=switch_user,
+        )
     elif command == "save":
         return commands.save(hosts=args.hosts, role=args.role, name=args.name)
     elif command == "sudo":
         return commands.sudo(
-            hosts=args.hosts, raw=args.raw, command=args.remote_command
+            hosts=args.hosts,
+            raw=args.raw,
+            command=args.remote_command,
+            switch_user=switch_user,
         )
     elif command == "scp":
-        return commands.scp(hosts=args.hosts, files=args.args)
+        return commands.scp(hosts=args.hosts, files=args.args, switch_user=switch_user)
     elif command == "spawn":
         if args.list_platforms:
             return commands.list_platforms()
@@ -167,9 +193,9 @@ def run_command_with_args(command, args) -> int:
         group_name = args.name if args.name else None
         return commands.destroy(group_name)
     elif command == "deploy":
-        return commands.deploy(args.hub, args.masterfiles)
+        return commands.deploy(args.hub, args.masterfiles, switch_user=switch_user)
     elif command == "agent":
-        return commands.agent(args.hosts, args.bootstrap)
+        return commands.agent(args.hosts, args.bootstrap, switch_user=switch_user)
     elif command == "connect":
         return commands.connect_cmd(args.hosts)
     else:
@@ -350,14 +376,9 @@ def _main() -> int:
         log.set_level(args.log_level)
     validate_args(args)
 
-    if args.switch_user_command:
-        ssh.set_switch_user_command(args.switch_user_command)
-    if args.ask_pass:
-        ssh.set_switch_user_password(getpass.getpass("Password for switching user: "))
-    elif args.password_file:
-        ssh.set_switch_user_password(ssh.read_switch_user_password(args.password_file))
-
-    exit_code = run_command_with_args(args.command, args)
+    exit_code = run_command_with_args(
+        args.command, args, switch_user=_switch_user_from_args(args)
+    )
     assert type(exit_code) is int
     return exit_code
 

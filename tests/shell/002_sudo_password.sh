@@ -46,6 +46,16 @@ assert_output () {  # assert_output <grep args...>
   fi
 }
 
+# The password must never be printed, not even with --log-level debug, so check
+# for it in everything cf-remote wrote rather than only in the command output
+refute_password () {  # refute_password <what would have leaked it>
+  if printf '%s\n' "$out" | grep -q "$password"; then
+    echo "FAIL: password showed up in the output: $1"
+    exit 1
+  fi
+  echo "ok: no password in the output ($1)"
+}
+
 # SSH logs in with a key, so the account password is only used by sudo
 rm -f "$dir/id_test" "$dir/id_test.pub"
 ssh-keygen -t ed25519 -N "" -f "$dir/id_test" -q
@@ -81,18 +91,23 @@ echo "=== with --ask-pass: should run as root ==="
 run_cfr "$password" cf-remote --ask-pass sudo -H cftest@"$host":"$port" 'id -un'
 assert_output "root"
 
+echo "=== with --log-level debug: the password must stay out of the log ==="
+run_cfr "$password" cf-remote --log-level debug --ask-pass \
+  sudo -H cftest@"$host":"$port" 'id -un'
+assert_output "root"
+assert_output "\[DEBUG\]"  # ... it really was a debug run
+refute_password "the password was sent to this host"
+
 echo "=== with a wrong password: should say it was rejected ==="
 run_cfr "definitely-not-the-password" \
   cf-remote --ask-pass sudo -H cftest@"$host":"$port" 'id -un'
 assert_output -i "rejected"
 
-echo "=== NOPASSWD host: the password must not reach the command ==="
-run_cfr "$password" cf-remote --ask-pass sudo -H cfnopass@"$host":"$port" 'cat'
-if printf '%s\n' "$out" | grep -q "$password"; then
-  echo "FAIL: password ended up on the standard input of the command"
-  exit 1
-fi
-echo "ok: no password sent where none was needed"
+echo "=== NOPASSWD host: the password must not reach the command or the log ==="
+run_cfr "$password" cf-remote --log-level debug --ask-pass \
+  sudo -H cfnopass@"$host":"$port" 'cat'
+assert_output "\[DEBUG\]"  # ... it really was a debug run
+refute_password "no password was needed on this host"
 
 echo "=== --switch-user-command is used as given ==="
 run_cfr "$password" cf-remote --ask-pass \

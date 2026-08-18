@@ -115,35 +115,26 @@ ExecutionResult = namedtuple(
 
 
 def _popen(args, stdin_input=None):
-    """Start a process, optionally writing 'stdin_input' to its standard input
+    """Start a process, giving it a pipe on standard input if we have input for it
 
-    Anything we send this way (a password for switching user) is small enough
-    to fit in the pipe buffer, so writing it up front cannot block. Standard
-    input is left alone (inherited) when there is nothing to send.
+    The data itself is handed to 'Popen.communicate()' by
+    ':meth:`_Task.communicate`' rather than written here: writing to
+    'proc.stdin' directly risks a deadlock, because the process can fill its
+    stdout or stderr pipe and stop reading while we are still blocked writing
+    to it. Standard input is left alone (inherited) when there is nothing to
+    send.
 
-    An empty string is not the same as `None`: it gives the command a pipe
-    with nothing in it, so anything waiting for input sees EOF at once rather
-    than blocking on the terminal 'cf-remote' was started from.
-
-    The pipe is deliberately left open here, 'communicate()' closes it (and
-    with it, sends the EOF a command waiting for more input needs).
+    An empty string is not the same as `None`: it gives the command a pipe that
+    is closed with nothing in it, so anything waiting for input sees EOF at
+    once rather than blocking on the terminal 'cf-remote' was started from.
     """
-    proc = subprocess.Popen(
+    return subprocess.Popen(
         args,
         stdin=(subprocess.PIPE if stdin_input is not None else None),
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         universal_newlines=True,
     )
-    if stdin_input:
-        assert proc.stdin is not None
-        try:
-            proc.stdin.write(stdin_input)
-            proc.stdin.flush()
-        except BrokenPipeError:
-            # The process is already gone, its exit code tells the story
-            pass
-    return proc
 
 
 class _Task:
@@ -154,6 +145,7 @@ class _Task:
         self.proc = proc
         self.action = action
         self.stdin_input = stdin_input
+        self._input_given = False
         self._max_retries = retries
         self._retries = retries
         self.stdout = ""
@@ -165,8 +157,13 @@ class _Task:
 
     def communicate(self, timeout=1, ignore_failed=False):
         start = time.time()
+        # 'communicate()' keeps writing what the first call handed it, and
+        # raises if a later one hands it the same input again. Timing out is
+        # normal here, so only the first call gets it.
+        stdin_input = None if self._input_given else self.stdin_input
+        self._input_given = True
         try:
-            out, err = self.proc.communicate(timeout=timeout)
+            out, err = self.proc.communicate(input=stdin_input, timeout=timeout)
         except subprocess.TimeoutExpired:
             log.debug("Connection timed out")
             return False
@@ -179,6 +176,7 @@ class _Task:
                     # wait for the rest of timeout (if any) and restart the process
                     time.sleep(max(timeout - (time.time() - start), 0))
                     self.proc = _popen(self.proc.args, self.stdin_input)
+                    self._input_given = False  # a new process needs it again
                     self._retries -= 1
                     return False
                 else:

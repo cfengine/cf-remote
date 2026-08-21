@@ -59,7 +59,9 @@ def _switch_user_from_args(args) -> ssh.SwitchUser:
     return ssh.SwitchUser(command=args.switch_user_command, password=password)
 
 
-def run_command_with_args(command, args, switch_user=None) -> int:
+def run_command_with_args(command, args) -> int:
+    switch_user = _switch_user_from_args(args)
+
     if command == "info":
         return commands.info(
             args.hosts, users=None, all=args.all, switch_user=switch_user
@@ -376,9 +378,7 @@ def _main() -> int:
         log.set_level(args.log_level)
     validate_args(args)
 
-    exit_code = run_command_with_args(
-        args.command, args, switch_user=_switch_user_from_args(args)
-    )
+    exit_code = run_command_with_args(args.command, args)
     assert type(exit_code) is int
     return exit_code
 

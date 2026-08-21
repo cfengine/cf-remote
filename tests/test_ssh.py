@@ -31,7 +31,7 @@ def test_failed_command():
 
 
 def test_switch_user_default():
-    assert ssh.SwitchUser().wrap("cf-agent -K") == "sudo bash -c 'cf-agent -K'"
+    assert ssh.SwitchUser().wrap("cf-agent -K") == "sudo -n bash -c 'cf-agent -K'"
 
 
 def test_switch_user_with_password():
@@ -57,7 +57,7 @@ def test_switch_user_settings_do_not_leak_between_connections():
     with_password = ssh.SwitchUser(password="hunter2")
 
     assert plain.password is None
-    assert plain.command == "sudo bash -c"
+    assert plain.command == "sudo -n bash -c"
     assert with_password.password == "hunter2"
     assert with_password.command == "sudo -S -p '' bash -c"
 

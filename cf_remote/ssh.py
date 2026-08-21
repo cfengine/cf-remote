@@ -42,11 +42,22 @@ def _check_reachable(
     )
 
 
-DEFAULT_SWITCH_USER_COMMAND = "sudo bash -c"
-"""Command used to run commands as another (privileged) user"""
+DEFAULT_SWITCH_USER_COMMAND = "sudo -n bash -c"
+"""Command used to run commands as another (privileged) user
+
+'-n' because there is never a terminal to prompt on: the SSH connections are
+made with 'BatchMode=yes' and without a pty, so a 'sudo' that decides to ask
+for a password has nowhere to ask. Saying so up front makes that failure
+immediate and worded the same way everywhere, instead of leaving each 'sudo'
+to complain about the missing terminal in its own words.
+"""
 
 DEFAULT_SWITCH_USER_COMMAND_WITH_PASSWORD = "sudo -S -p '' bash -c"
-"""Same, but reading the password from standard input instead of a terminal"""
+"""Same, but reading the password from standard input instead of a terminal
+
+No '-n' here: it means never prompt, which is exactly what '-S' is asking to
+do, and the two together refuse the password rather than read it.
+"""
 
 
 def read_switch_user_password(path):
@@ -453,9 +464,12 @@ def _switch_user_hint(connection, result):
     if "try again" in output or "incorrect password" in output:
         return "Password for switching user was rejected on '%s'" % connection.ssh_host
 
+    # The default command says "a password is required" (both wordings sudo
+    # has used), the other two are what a command given with
+    # --switch-user-command says when it wants to ask on a terminal
     needs_password = (
-        "a terminal is required" in output
-        or "a password is required" in output
+        "a password is required" in output
+        or "a terminal is required" in output
         or "no tty present" in output
     )
     if needs_password:

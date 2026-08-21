@@ -218,7 +218,8 @@ $ cf-remote --ask-pass --switch-user-command "doas /bin/sh -c" info -H bsd-host
 ```
 
 The command to run is appended as a single quoted argument.
-The default is `sudo bash -c`, or `sudo -S -p '' bash -c` with `--ask-pass`, since `sudo` only reads the password from standard input when it is given `-S`.
+The default is `sudo -n bash -c`, or `sudo -S -p '' bash -c` with `--ask-pass`, since `sudo` only reads the password from standard input when it is given `-S`.
+`-n` in the first is because there is no terminal to prompt on, so a `sudo` that wants a password should say so instead of trying to ask; it is left out of the second because it means never prompt, and `sudo` then refuses the password rather than reading it.
 
 A password can only reach a command that reads it from standard input, which in practice means `sudo -S` and the tools that copy its interface, such as `dzdo -S`.
 `doas` and `su` read from a terminal instead, so they work with `--switch-user-command` where they need no password, but cannot be given one by `cf-remote`.

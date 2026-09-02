@@ -59,6 +59,14 @@ No '-n' here: it means never prompt, which is exactly what '-S' is asking to
 do, and the two together refuse the password rather than read it.
 """
 
+SWITCH_USER_LOCALE = "LC_ALL=C"
+"""Locale the command switching user runs in
+
+'_switch_user_hint()' tells "this wanted a password" apart from any other
+failure by what the command said, and 'sudo' says it in the caller's language,
+which 'ssh' carries over. Pinning it is what makes those wordings arrive.
+"""
+
 
 def read_switch_user_password(path):
     """Read the password for switching user from the first line of a file
@@ -130,8 +138,11 @@ class SwitchUser:
         'cmd' is quoted rather than wrapped in quotes: a command containing a
         quote of its own would otherwise end the wrapping early and the remote
         shell would run something else, or nothing at all.
+
+        The locale is pinned, see :data:`SWITCH_USER_LOCALE`. 'sudo' keeps
+        'LC_ALL', so 'cmd' runs in it too.
         """
-        return "%s %s" % (self.command, shlex.quote(cmd))
+        return "%s %s %s" % (SWITCH_USER_LOCALE, self.command, shlex.quote(cmd))
 
     def needs_password_on(self, connection):
         """Check whether switching user on this host requires a password
@@ -464,8 +475,9 @@ def _switch_user_hint(connection, result):
     if "try again" in output or "incorrect password" in output:
         return "Password for switching user was rejected on '%s'" % connection.ssh_host
 
-    # The default command says "a password is required" (both wordings sudo
-    # has used), the other two are what a command given with
+    # C locale wordings, which SWITCH_USER_LOCALE is what guarantees. The
+    # default command says "a password is required" (both wordings sudo has
+    # used), the other two are what a command given with
     # --switch-user-command says when it wants to ask on a terminal
     needs_password = (
         "a password is required" in output

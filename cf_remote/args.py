@@ -304,10 +304,15 @@ def add_switch_user_args(ap: argparse.ArgumentParser) -> None:
         "--switch-user-command",
         help="Command used to run commands as another (privileged) user."
         + " The command to run is appended as a single quoted argument."
-        + " Defaults to '%s', or '%s' when --ask-pass is used"
-        % (
-            ssh.DEFAULT_SWITCH_USER_COMMAND,
-            ssh.DEFAULT_SWITCH_USER_COMMAND_WITH_PASSWORD,
+        + (
+            " Defaults to '%s', or '%s' when --ask-pass is used, and is run"
+            " with '%s' so that a complaint about a missing password is"
+            " recognized whatever the host's language"
+            % (
+                ssh.DEFAULT_SWITCH_USER_COMMAND,
+                ssh.DEFAULT_SWITCH_USER_COMMAND_WITH_PASSWORD,
+                ssh.SWITCH_USER_LOCALE,
+            )
         ),
         type=str,
     )

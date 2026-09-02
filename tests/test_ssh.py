@@ -31,23 +31,32 @@ def test_failed_command():
 
 
 def test_switch_user_default():
-    assert ssh.SwitchUser().wrap("cf-agent -K") == "sudo -n bash -c 'cf-agent -K'"
+    assert (
+        ssh.SwitchUser().wrap("cf-agent -K") == "LC_ALL=C sudo -n bash -c 'cf-agent -K'"
+    )
 
 
 def test_switch_user_with_password():
     # With a password to send, sudo has to read it from standard input
     switch_user = ssh.SwitchUser(password="hunter2")
-    assert switch_user.wrap("cf-agent -K") == "sudo -S -p '' bash -c 'cf-agent -K'"
+    assert (
+        switch_user.wrap("cf-agent -K")
+        == "LC_ALL=C sudo -S -p '' bash -c 'cf-agent -K'"
+    )
 
 
 def test_switch_user_command_overrides_default():
     switch_user = ssh.SwitchUser(command="doas -n /bin/sh -c")
-    assert switch_user.wrap("cf-agent -K") == "doas -n /bin/sh -c 'cf-agent -K'"
+    assert (
+        switch_user.wrap("cf-agent -K") == "LC_ALL=C doas -n /bin/sh -c 'cf-agent -K'"
+    )
 
     # ... also when a password is given, then it's up to the user to make the
     # command read it from standard input
     switch_user = ssh.SwitchUser(command="doas -n /bin/sh -c", password="hunter2")
-    assert switch_user.wrap("cf-agent -K") == "doas -n /bin/sh -c 'cf-agent -K'"
+    assert (
+        switch_user.wrap("cf-agent -K") == "LC_ALL=C doas -n /bin/sh -c 'cf-agent -K'"
+    )
 
 
 def test_switch_user_settings_do_not_leak_between_connections():
@@ -60,6 +69,21 @@ def test_switch_user_settings_do_not_leak_between_connections():
     assert plain.command == "sudo -n bash -c"
     assert with_password.password == "hunter2"
     assert with_password.command == "sudo -S -p '' bash -c"
+
+
+def test_switch_user_pins_the_locale():
+    # The hint about a missing password is decided by what the command said, so
+    # every way of switching user has to say it in the language matched for
+    for switch_user in (
+        ssh.SwitchUser(),
+        ssh.SwitchUser(password="hunter2"),
+        ssh.SwitchUser(command="doas /bin/sh -c"),
+    ):
+        assert switch_user.wrap("cf-agent -K").startswith(ssh.SWITCH_USER_LOCALE + " ")
+
+    # ... and it has to be LC_ALL, since that is the one an LC_ALL already set
+    # on the host cannot override
+    assert ssh.SWITCH_USER_LOCALE == "LC_ALL=C"
 
 
 def test_switch_user_survives_quotes_in_the_command():
@@ -147,7 +171,9 @@ def test_password_goes_on_standard_input():
     connection.switch_user_needs_password = True
 
     ssh.ssh_sudo(connection, "id -un")
-    assert connection.commands == [("sudo -S -p '' bash -c 'id -un'", "hunter2\n")]
+    assert connection.commands == [
+        ("LC_ALL=C sudo -S -p '' bash -c 'id -un'", "hunter2\n")
+    ]
 
 
 def test_password_is_withheld_where_it_isnt_needed():
@@ -156,7 +182,7 @@ def test_password_is_withheld_where_it_isnt_needed():
     connection.switch_user_needs_password = False
 
     ssh.ssh_sudo(connection, "id -un")
-    assert connection.commands == [("sudo -S -p '' bash -c 'id -un'", None)]
+    assert connection.commands == [("LC_ALL=C sudo -S -p '' bash -c 'id -un'", None)]
 
 
 def test_own_switch_user_command_is_asked_with_empty_input():
@@ -166,7 +192,7 @@ def test_own_switch_user_command_is_asked_with_empty_input():
 
     connection = FakeConnection(retcode=0, switch_user=switch_user)
     assert switch_user.needs_password_on(connection) is False
-    assert connection.commands == [("doas /bin/sh -c true", "")]
+    assert connection.commands == [("LC_ALL=C doas /bin/sh -c true", "")]
 
     connection = FakeConnection(retcode=1, switch_user=switch_user)
     assert switch_user.needs_password_on(connection) is True

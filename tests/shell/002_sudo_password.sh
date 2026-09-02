@@ -115,6 +115,14 @@ run_cfr "$password" cf-remote --ask-pass \
   sudo -H cftest@"$host":"$port" 'readlink /proc/$$/exe'
 assert_output "sh"
 
+echo "=== the caller's locale does not decide what sudo says ==="
+# The hint about a missing password is decided by what sudo said, and sudo says
+# it in the caller's language on distributions that ship its translations.
+# ssh carries LANG and LC_* over, so the command has to pin the locale itself.
+run_cfr "$password" env LC_ALL=de_DE.UTF-8 cf-remote --ask-pass \
+  sudo -H cftest@"$host":"$port" 'echo "switched_LC_ALL=$LC_ALL"'
+assert_output "switched_LC_ALL=C"
+
 echo "=== a command carrying a quote of its own survives ==="
 quoted_payload='echo "it'"'"'s fine"'
 run_cfr "$password" cf-remote --ask-pass sudo -H cftest@"$host":"$port" "$quoted_payload"

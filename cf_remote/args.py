@@ -2,7 +2,6 @@ import argparse
 import os
 import sys
 
-from cf_remote import ssh
 from cf_remote.utils import cache
 
 
@@ -289,31 +288,17 @@ def add_switch_user_args(ap: argparse.ArgumentParser) -> None:
     password_source.add_argument(
         "--ask-pass",
         "-K",
-        help="Prompt for the password used to switch user on the remote hosts."
-        + " The password is asked for once and used for all hosts",
+        help="Prompt for the password to switch user with",
         action="store_true",
     )
     password_source.add_argument(
         "--password-file",
-        help="Read the password used to switch user from the first line of a"
-        + " file, for use where there is nobody to answer --ask-pass."
-        + " The file must not be readable by others",
+        help="Read the password to switch user with from the first line of a file",
         type=str,
     )
     ap.add_argument(
         "--switch-user-command",
-        help="Command used to run commands as another (privileged) user."
-        + " The command to run is appended as a single quoted argument."
-        + (
-            " Defaults to '%s', or '%s' when --ask-pass is used, and is run"
-            " with '%s' so that a complaint about a missing password is"
-            " recognized whatever the host's language"
-            % (
-                ssh.DEFAULT_SWITCH_USER_COMMAND,
-                ssh.DEFAULT_SWITCH_USER_COMMAND_WITH_PASSWORD,
-                ssh.SWITCH_USER_LOCALE,
-            )
-        ),
+        help="Command to switch user with, e.g. 'doas /bin/sh -c'",
         type=str,
     )
 

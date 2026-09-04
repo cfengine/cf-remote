@@ -117,16 +117,9 @@ ExecutionResult = namedtuple(
 def _popen(args, stdin_input=None):
     """Start a process, giving it a pipe on standard input if we have input for it
 
-    The data itself is handed to 'Popen.communicate()' by
-    ':meth:`_Task.communicate`' rather than written here: writing to
-    'proc.stdin' directly risks a deadlock, because the process can fill its
-    stdout or stderr pipe and stop reading while we are still blocked writing
-    to it. Standard input is left alone (inherited) when there is nothing to
-    send.
+    Uses 'Popen.communicate()' to avoid deadlock (see https://docs.python.org/3/library/subprocess.html#subprocess.Popen.stderr).
 
-    An empty string is not the same as `None`: it gives the command a pipe that
-    is closed with nothing in it, so anything waiting for input sees EOF at
-    once rather than blocking on the terminal 'cf-remote' was started from.
+    An empty string closes the pipe immediately. Anything waiting for input sees EOF at once.
     """
     return subprocess.Popen(
         args,

@@ -7,7 +7,12 @@ from cf_remote.utils import cache
 
 def add_info_args(sp: argparse.ArgumentParser) -> None:
     sp.add_argument(
-        "--hosts", "-H", help="Which hosts to get info for", type=str, required=True
+        "--hosts", "-H", help="Which hosts to get info for", type=str, required=False
+    )
+    sp.add_argument(
+        "--all",
+        help="Show info about all hosts",
+        action="store_true",
     )
 
 

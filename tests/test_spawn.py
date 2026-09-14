@@ -9,6 +9,7 @@ from cf_remote.spawn import (
     _get_image_criteria,
     _update_config,
     destroy_vms,
+    CloudVM,
 )
 from cf_remote.utils import read_json, write_json
 
@@ -266,3 +267,15 @@ def test_destroy_vms_one_permanent_failure_does_not_block_other_vms(state_paths)
     state = read_json(str(cloud_state))
     assert "@ok" not in state
     assert "@bad" in state
+
+
+def test_get_by_ip_empty_list_no_driver_returns_none():
+    assert CloudVM.get_by_ip("1.2.3.4", nodes=[]) is None
+
+
+def test_get_by_uuid_empty_list_no_driver_returns_none():
+    assert CloudVM.get_by_uuid("some-uuid", nodes=[]) is None
+
+
+def test_get_by_name_empty_list_no_driver_returns_none():
+    assert CloudVM.get_by_name("my-vm", nodes=[]) is None

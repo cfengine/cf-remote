@@ -53,8 +53,19 @@ from cf_remote import log
 from cf_remote import cloud_data
 
 
-def info(hosts, users=None):
-    assert hosts
+def info(hosts, users=None, all=False):
+    if all:
+        hosts = _get_all_hosts()
+    elif not hosts:
+        hosts = _get_hubs()
+
+    if not hosts:
+        if all:
+            print("No hosts")
+        else:
+            print("No hub hosts")
+        return 0
+
     log.debug("hosts='{}'".format(hosts))
     errors = 0
     for host in hosts:
@@ -948,21 +959,26 @@ def deploy_tarball(hubs, tarball):
     return errors
 
 
-def _get_hubs():
+def _get_all_hosts(role=None):
     if not os.path.exists(CLOUD_STATE_FPATH):
         return None
     groups = read_json(CLOUD_STATE_FPATH)
     if not groups:
         return None
-    hubs = []
-    for name, group in groups.items():
+    hosts = []
+    for group in groups.values():
         for name, vm in group.items():
             if name == "meta":
                 continue
-            if vm["role"] == "hub":
-                identifier = "{}@{}".format(vm["user"], vm["public_ips"][0])
-                hubs.append(identifier)
-    return hubs
+            if role is not None and vm["role"] != role:
+                continue
+            identifier = "{}@{}".format(vm["user"], vm["public_ips"][0])
+            hosts.append(identifier)
+    return hosts
+
+
+def _get_hubs():
+    return _get_all_hosts(role="hub")
 
 
 def deploy(hubs, masterfiles):

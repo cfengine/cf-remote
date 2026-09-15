@@ -44,7 +44,7 @@ def get_args():
 
 def run_command_with_args(command, args) -> int:
     if command == "info":
-        return commands.info(args.hosts, None)
+        return commands.info(args.hosts, users=None, all=args.all)
     elif command == "install":
         if args.trust_keys:
             trust_keys = args.trust_keys.split(",")

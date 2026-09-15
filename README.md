@@ -78,11 +78,15 @@ Copying: '/Users/olehermanse/.cfengine/cf-remote/json/def.json' to '34.247.181.1
 Triggering an agent run on: '34.247.181.100'
 Disabling password change on hub: '34.247.181.100'
 Triggering an agent run on: '34.247.181.100'
-Your demo hub is ready: https://34.247.181.100/ (Username: admin, Password: password)
+Your demo hub is ready: https://34.247.181.100/ (Username: admin, Password: QxvTmKdLbRsWnp)
 ```
 
+The username is always `admin`.
+The password is randomly generated for each hub.
+It is only shown in that last log message, so take note of it.
+
 Note that this demo setup (`--demo`) is notoriously insecure.
-It has default passwords and open access controls.
+It has open access controls.
 Don't use it in a production environment.
 
 ### Spawning instances in AWS EC2
@@ -145,10 +149,11 @@ Copying: '/home/olehermanse/.cfengine/cf-remote/json/def.json' to 'ubuntu@52.214
 Triggering an agent run on: '52.214.209.170'
 Disabling password change on hub: 'ubuntu@52.214.209.170'
 Triggering an agent run on: '52.214.209.170'
-Your demo hub is ready: https://52.214.209.170/ (Username: admin, Password: password)
+Your demo hub is ready: https://52.214.209.170/ (Username: admin, Password: hJmZqRtvBkNwdc)
 ```
 
 Mission portal will be available at that IP, using the username and password from the last log message.
+The password is randomly generated, so it differs from the one above.
 
 When you are done, you can decommission your spawned instance(s) using:
 

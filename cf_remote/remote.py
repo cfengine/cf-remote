@@ -135,15 +135,17 @@ def print_info(data):
     print()
 
 
-def transfer_file(host, file, users=None, connection=None):
+def transfer_file(host, file, users=None, connection=None, switch_user=None):
     assert not users or len(users) == 1
     if users:
         host = users[0] + "@" + host
-    return scp(file=file, remote=host, connection=connection)
+    return scp(file=file, remote=host, connection=connection, switch_user=switch_user)
 
 
 @auto_connect
-def run_command(host, command, *, users=None, connection=None, sudo=False):
+def run_command(
+    host, command, *, users=None, connection=None, sudo=False, switch_user=None
+):
     if sudo:
         return ssh_sudo(connection, command, errors=True)
     return ssh_cmd(connection, command, errors=True)
@@ -208,7 +210,7 @@ def get_package_tags(os_release=None, redhat_release=None):
 
 
 @auto_connect
-def get_info(host, *, users=None, connection=None):
+def get_info(host, *, users=None, connection=None, switch_user=None):
     assert connection is not None
     log.debug("Getting info about '{}'".format(host))
     user, host = connection.ssh_user, connection.ssh_host
@@ -665,7 +667,8 @@ def install_host(
     trust_keys=None,
     insecure=False,
     demo_salt=None,
-    demo_sha=None
+    demo_sha=None,
+    switch_user=None
 ):
     data = get_info(host, connection=connection)
     if show_info:
@@ -784,7 +787,7 @@ class HostInstaller:
 
 
 @auto_connect
-def uninstall_host(host, *, connection=None, purge=False):
+def uninstall_host(host, *, connection=None, purge=False, switch_user=None):
     data = get_info(host, connection=connection)
     print_info(data)
 
@@ -809,7 +812,7 @@ def uninstall_host(host, *, connection=None, purge=False):
 
 
 @auto_connect
-def deploy_masterfiles(host, tarball, *, connection=None):
+def deploy_masterfiles(host, tarball, *, connection=None, switch_user=None):
     data = get_info(host, connection=connection)
     print("\nDeploying to:")
     print_info(data)

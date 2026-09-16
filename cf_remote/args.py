@@ -283,6 +283,26 @@ def add_connect_args(sp: argparse.ArgumentParser) -> None:
     )
 
 
+def add_switch_user_args(ap: argparse.ArgumentParser) -> None:
+    password_source = ap.add_mutually_exclusive_group()
+    password_source.add_argument(
+        "--ask-pass",
+        "-K",
+        help="Prompt for the password to switch user with",
+        action="store_true",
+    )
+    password_source.add_argument(
+        "--password-file",
+        help="Read the password to switch user with from the first line of a file",
+        type=str,
+    )
+    ap.add_argument(
+        "--switch-user-command",
+        help="Command to switch user with, e.g. 'doas /bin/sh -c'",
+        type=str,
+    )
+
+
 @cache
 def get_arg_parser() -> argparse.ArgumentParser:
     ap = argparse.ArgumentParser(
@@ -304,6 +324,7 @@ def get_arg_parser() -> argparse.ArgumentParser:
         type=str,
         const=True,
     )
+    add_switch_user_args(ap)
 
     command_help_hint = (
         "Commands (use %s COMMAND --help to get more info)"

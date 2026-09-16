@@ -8,6 +8,7 @@ Commands for provisioning hosts in the cloud (AWS or GCP) are also available.
 
 - cf-remote requires python 3.6 or greater.
 - SSH must be configured in such a way that cf-remote can login without a password.
+- The account cf-remote logs in as must be root or be able to `sudo`. Passwordless sudo is not required, see [Switching user on the remote hosts](#switching-user-on-the-remote-hosts).
 - An sftp server for transferring files on UNIX hosts. e.g. openssh-sftp-server for debian-based distributions.
 
 ## Installation
@@ -188,6 +189,44 @@ If you have more than one key in `~/.ssh` you may need to specify which key `cf-
 ```
 $ export CF_REMOTE_SSH_KEY="~/.ssh/id_rsa.pub"
 ```
+
+### Switching user on the remote hosts
+
+Most of what `cf-remote` does needs root, so unless it logs in as root it runs commands through `sudo`.
+If `sudo` asks for a password, use `--ask-pass` (`-K`) and `cf-remote` prompts for it once and uses it for all the hosts in the run:
+
+```
+$ cf-remote --ask-pass install --clients ubuntu@10.0.0.5
+Password for switching user:
+```
+
+The password is written to the standard input of the `ssh` process, so it is never part of a command line and doesn't show up in the process list, in the shell history on the target host, or in the output of `--log-level DEBUG`.
+It is only sent to hosts where switching user actually asks for a password.
+
+Where there is nobody to answer a prompt, such as in a script or a CI job, put the password on the first line of a file and point `--password-file` at it:
+
+```
+$ cf-remote --password-file ~/.cf-remote-password install --clients ubuntu@10.0.0.5
+```
+
+`cf-remote` refuses to read the file if others can read it, the same way `ssh` refuses to use a private key with too generous permissions, so `chmod 600` it first.
+
+Use `--switch-user-command` if `sudo` is not what you want to switch user with:
+
+```
+$ cf-remote --ask-pass --switch-user-command "doas /bin/sh -c" info -H bsd-host
+```
+
+The command to run is appended as a single quoted argument.
+The default is `sudo -n bash -c`, or `sudo -S -p '' bash -c` with `--ask-pass`, since `sudo` only reads the password from standard input when it is given `-S`.
+`-n` in the first is because there is no terminal to prompt on, so a `sudo` that wants a password should say so instead of trying to ask; it is left out of the second because it means never prompt, and `sudo` then refuses the password rather than reading it.
+
+Whichever command is used, it is run with `LC_ALL=C`.
+`cf-remote` recognizes "this needs a password you didn't give me" by what the command said, and `sudo` says it in the caller's language on the distributions that ship its translations, which `ssh` carries over by default.
+`sudo` keeps `LC_ALL`, so the command being run is left in the C locale as well; commands run without switching user are not.
+
+A password can only reach a command that reads it from standard input, which in practice means `sudo -S` and the tools that copy its interface, such as `dzdo -S`.
+`doas` and `su` read from a terminal instead, so they work with `--switch-user-command` where they need no password, but cannot be given one by `cf-remote`.
 
 ### Working on the local host
 

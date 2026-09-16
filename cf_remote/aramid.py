@@ -114,11 +114,31 @@ ExecutionResult = namedtuple(
 )
 
 
+def _popen(args, stdin_input=None):
+    """Start a process, giving it a pipe on standard input if we have input for it
+
+    Uses 'Popen.communicate()' to avoid deadlock (see https://docs.python.org/3/library/subprocess.html#subprocess.Popen.stderr).
+
+    An empty string closes the pipe immediately. Anything waiting for input sees EOF at once.
+    """
+    return subprocess.Popen(
+        args,
+        stdin=(subprocess.PIPE if stdin_input is not None else None),
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        universal_newlines=True,
+    )
+
+
 class _Task:
-    def __init__(self, host, proc, action=None, retries=0):  # TODO: timeout=60
+    def __init__(
+        self, host, proc, action=None, retries=0, stdin_input=None
+    ):  # TODO: timeout=60
         self.host = host
         self.proc = proc
         self.action = action
+        self.stdin_input = stdin_input
+        self._input_given = False
         self._max_retries = retries
         self._retries = retries
         self.stdout = ""
@@ -130,8 +150,13 @@ class _Task:
 
     def communicate(self, timeout=1, ignore_failed=False):
         start = time.time()
+        # 'communicate()' keeps writing what the first call handed it, and
+        # raises if a later one hands it the same input again. Timing out is
+        # normal here, so only the first call gets it.
+        stdin_input = None if self._input_given else self.stdin_input
+        self._input_given = True
         try:
-            out, err = self.proc.communicate(timeout=timeout)
+            out, err = self.proc.communicate(input=stdin_input, timeout=timeout)
         except subprocess.TimeoutExpired:
             log.debug("Connection timed out")
             return False
@@ -143,12 +168,8 @@ class _Task:
                 if self._retries > 0:
                     # wait for the rest of timeout (if any) and restart the process
                     time.sleep(max(timeout - (time.time() - start), 0))
-                    self.proc = subprocess.Popen(
-                        self.proc.args,
-                        stdout=subprocess.PIPE,
-                        stderr=subprocess.PIPE,
-                        universal_newlines=True,
-                    )
+                    self.proc = _popen(self.proc.args, self.stdin_input)
+                    self._input_given = False  # a new process needs it again
                     self._retries -= 1
                     return False
                 else:
@@ -305,6 +326,7 @@ def execute(
     ignore_failed=False,
     echo=True,
     echo_cmd=False,
+    stdin_input=None,
 ):  # TODO: parallel=False
     """Execute command on remote hosts (in parallel)
 
@@ -321,6 +343,9 @@ def execute(
     :param bool echo: whether to echo the output (STDOUT first followed by
                       STDERR) of the given commands
     :param bool echo_cmd: whether to echo the commands run on the hosts
+    :param str stdin_input: data to write to the standard input of the commands,
+                            for example a password for switching user. If `None`,
+                            standard input is inherited from `cf-remote` itself.
     :return: results of commands executed on the given hosts
     :rtype: dict(:class:`Host` -> list(:class:`ExecutionResult`))
 
@@ -340,18 +365,16 @@ def execute(
         port_args = []
         if host.port != _DEFAULT_SSH_PORT:
             port_args += ["-p", str(host.port)]
-        proc = subprocess.Popen(
+        proc = _popen(
             ["ssh"]
             + DEFAULT_SSH_ARGS
             + port_args
             + host.extra_ssh_args
             + [host.login]
             + [commands[i]],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            universal_newlines=True,
+            stdin_input=stdin_input,
         )
-        task = _Task(host, proc, commands[i], retries=retries)
+        task = _Task(host, proc, commands[i], retries=retries, stdin_input=stdin_input)
         host.tasks.append(task)
         tasks.append(task)
 

@@ -37,7 +37,9 @@ def cloud_state(tmp_path, monkeypatch):
 @pytest.fixture(autouse=True)
 def fake_get_info(monkeypatch):
     monkeypatch.setattr(
-        commands, "get_info", lambda host, users=None: DATA_BY_HOST[host]
+        commands,
+        "get_info",
+        lambda host, users=None, switch_user=None: DATA_BY_HOST[host],
     )
 
 

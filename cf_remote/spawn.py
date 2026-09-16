@@ -6,12 +6,15 @@ import os
 import subprocess
 import json
 import shutil
+import time
 from collections import namedtuple
 from enum import Enum
 from multiprocessing.dummy import Pool
 from pathlib import Path
 
 from libcloud.common.types import InvalidCredsError
+from libcloud.common.exceptions import BaseHTTPError
+from libcloud.common.google import GoogleBaseError
 from libcloud.compute.types import Provider
 from libcloud.compute.providers import get_driver
 from libcloud.compute.base import NodeSize, NodeImage
@@ -19,8 +22,15 @@ from libcloud.compute.drivers.ec2 import EC2NodeDriver
 from libcloud.compute.drivers.gce import GCENodeDriver
 
 from cf_remote.cloud_data import aws_image_criteria, aws_defaults
-from cf_remote.paths import cf_remote_dir, CLOUD_STATE_FPATH
-from cf_remote.utils import CFRUserError, whoami, copy_file, canonify, read_json
+from cf_remote.paths import cf_remote_dir, CLOUD_STATE_FPATH, SSH_CONFIGS_JSON_FPATH
+from cf_remote.utils import (
+    CFRUserError,
+    whoami,
+    copy_file,
+    canonify,
+    read_json,
+    write_json,
+)
 from cf_remote import log
 from cf_remote import cloud_data
 
@@ -649,20 +659,87 @@ def spawn_vms(
     return ret
 
 
-def destroy_vms(vms):
-    if not vms:
+def _destroy_one(vm):
+    try:
+        vm.destroy()
+        return (vm, None)
+    except BaseHTTPError as e:
+        if e.code == 404:
+            return (vm, None)
+        return (vm, e)
+    except (InvalidCredsError, GoogleBaseError) as e:
+        return (vm, e)
+
+
+def _update_config(group_key, host_key):
+    vms_info = read_json(CLOUD_STATE_FPATH)
+    if not vms_info:
         return
 
-    folders = set(vm.vmdir for vm in vms if getattr(vm, "vmdir", False))
+    ssh_config = read_json(SSH_CONFIGS_JSON_FPATH)
 
-    with Pool(len(vms)) as pool:
-        pool.map(lambda vm: vm.destroy(), vms)
+    if not ssh_config:
+        ssh_config = {}
 
-    try:
-        for f in folders:
-            shutil.rmtree(f)
-    except:
-        pass
+    group = vms_info[group_key]
+    del group[host_key]
+
+    if len(group.keys()) <= 1:
+        del vms_info[group_key]
+
+        if group_key in ssh_config:
+            del ssh_config[group_key]
+
+    write_json(CLOUD_STATE_FPATH, vms_info)
+    write_json(SSH_CONFIGS_JSON_FPATH, ssh_config)
+
+
+def destroy_vms(vm_locations, retries=3, retry_delay=10):
+    if not vm_locations:
+        return 0
+
+    remaining = list(vm_locations.keys())
+    errors = {}
+
+    for attempt in range(retries):
+        with Pool(len(remaining)) as pool:
+            results = pool.map(_destroy_one, remaining)
+
+        remaining = []
+        for vm, error in results:
+            if error is not None:
+                remaining.append(vm)
+                errors[vm] = error
+                continue
+
+            group_key, host_key = vm_locations[vm]
+            _update_config(group_key, host_key)
+
+            if hasattr(vm, "vmdir"):
+                shutil.rmtree(vm.vmdir, ignore_errors=True)
+
+        if not remaining:
+            # all vms are deleted
+            break
+
+        if attempt < retries - 1:
+            log.error(
+                "Failed to destroy %d VM(s), retrying in %d seconds:\n%s"
+                % (
+                    len(remaining),
+                    retry_delay,
+                    "\n\t".join(str(errors[vm]) for vm in remaining),
+                )
+            )
+            time.sleep(retry_delay)
+
+    if remaining:
+        for vm in remaining:
+            _, host_key = vm_locations[vm]
+            log.error("Failed to destroy VM '%s': %s" % (host_key, errors[vm]))
+        return 1
+
+    return 0
 
 
 def dump_vms_info(vms):

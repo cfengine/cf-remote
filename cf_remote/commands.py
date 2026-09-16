@@ -606,7 +606,7 @@ def _get_cloud_vms(provider, creds, region, group):
         vm_uuid = vm_info["uuid"]
         vm = CloudVM.get_by_uuid(vm_uuid, nodes=nodes)
         if vm is not None:
-            yield vm
+            yield name, vm
         else:
             print("VM '%s' not found in the clouds" % vm_uuid)
 
@@ -617,7 +617,7 @@ def _get_vagrant_vms(group):
             continue
         vm = VagrantVM.get_by_info(name, vm_info)
         if vm is not None:
-            yield vm
+            yield name, vm
         else:
             print("VM '%s' not found locally" % name)
 
@@ -660,7 +660,7 @@ def destroy(group_name=None):
     if not vms_info:
         raise CFRUserError("No saved VMs found in '{}'".format(CLOUD_STATE_FPATH))
 
-    to_destroy = []
+    to_destroy = {}
     group_names = None
     if group_name:
         if not group_name.startswith("@"):
@@ -673,7 +673,6 @@ def destroy(group_name=None):
     else:
         group_names = [key for key in vms_info.keys() if key.startswith("@")]
 
-    ssh_config = read_json(SSH_CONFIGS_JSON_FPATH)
     assert group_names is not None
     for group_name in group_names:
         if _is_saved_group(vms_info, group_name):
@@ -698,18 +697,10 @@ def destroy(group_name=None):
         if provider == "vagrant":
             vms = _get_vagrant_vms(group)
 
-        for vm in vms:
-            to_destroy.append(vm)
+        for host_name, vm in vms:
+            to_destroy[vm] = (group_name, host_name)
 
-        del vms_info[group_name]
-
-        if ssh_config and group_name in ssh_config:
-            del ssh_config[group_name]
-
-    destroy_vms(to_destroy)
-    write_json(CLOUD_STATE_FPATH, vms_info)
-    write_json(SSH_CONFIGS_JSON_FPATH, ssh_config)
-    return 0
+    return destroy_vms(to_destroy)
 
 
 def list_platforms():

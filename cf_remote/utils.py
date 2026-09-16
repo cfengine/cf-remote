@@ -96,10 +96,16 @@ def read_file(path):
 
 def save_file(path, data):
     try:
-        if "/" in path:
-            mkdir("/".join(path.split("/")[0:-1]))
-        with open(path, "w") as f:
-            f.write(data)
+        directory = os.path.dirname(path) or "."
+        mkdir(directory)
+        fd, tmp_path = tempfile.mkstemp(dir=directory, prefix=".tmp-")
+        try:
+            with os.fdopen(fd, "w") as f:
+                f.write(data)
+            os.replace(tmp_path, path)
+        except Exception:
+            os.remove(tmp_path)
+            raise
     except PermissionError:
         raise CFRExitError("No permission to write to '{}'.".format(path))
 

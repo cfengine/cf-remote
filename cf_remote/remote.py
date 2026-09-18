@@ -849,5 +849,10 @@ def deploy_masterfiles(host, tarball, *, connection=None, switch_user=None):
     if result is None:
         log.error("Command failed, policy failed to deploy")
         return 1
+
+    if re.search(r"(?m)^\s*error:", result):
+        print(result)
+        log.warning("cf-agent reported errors while running on '%s'" % host)
+
     print("Policy set successfully deployed to '%s' 🚀" % host)
     return 0

@@ -140,7 +140,7 @@ class CloudVM(VM):
                 print("Don't know which driver to use: %s" % _DRIVERS.keys())
                 return None
 
-        if not nodes:
+        if nodes is None:
             assert driver is not None
             nodes = driver.list_nodes()
         for node in nodes:
@@ -160,7 +160,7 @@ class CloudVM(VM):
                 print("Don't know which driver to use: %s" % _DRIVERS.keys())
                 return None
 
-        if not nodes:
+        if nodes is None:
             assert driver is not None
             nodes = driver.list_nodes()
         for node in nodes:
@@ -178,7 +178,7 @@ class CloudVM(VM):
                 print("Don't know which driver to use: %s" % _DRIVERS.keys())
                 return None
 
-        if not nodes:
+        if nodes is None:
             assert driver is not None
             nodes = driver.list_nodes()
         for node in nodes:

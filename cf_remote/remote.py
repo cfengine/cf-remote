@@ -839,8 +839,11 @@ def deploy_masterfiles(host, tarball, *, connection=None, switch_user=None):
         "mv /var/cfengine/masterfiles /var/cfengine/masterfiles.delete",
         "mv masterfiles /var/cfengine/masterfiles",
         "rm -rf /var/cfengine/masterfiles.delete",
-        "{}cf-agent -Kf update.cf".format(cfagent_path),
-        "{}cf-agent -K".format(cfagent_path),
+        # cf-promises (run by cf-agent to validate the policy) writes policy
+        # errors, like a duplicate bundle, to stderr - and ssh_sudo() only
+        # returns stdout on success - so merge them to be able to show them.
+        "{}cf-agent -Kf update.cf 2>&1".format(cfagent_path),
+        "{}cf-agent -K 2>&1".format(cfagent_path),
     ]
     combined = " && ".join(commands)
     print("Running: '%s'" % combined)
@@ -850,7 +853,9 @@ def deploy_masterfiles(host, tarball, *, connection=None, switch_user=None):
         log.error("Command failed, policy failed to deploy")
         return 1
 
-    if re.search(r"(?m)^\s*error:", result):
+    # Matches both cf-agent's log lines ("   error: ...") and the ones
+    # cf-promises prefixes with the location ("file.cf:12:0: error: ...")
+    if re.search(r"(?m)^(\s*|\S+:\d+:\d+: )error:", result):
         print(result)
         log.warning("cf-agent reported errors while running on '%s'" % host)
 
